@@ -892,6 +892,26 @@ body.logged-in .app-container {
     background: var(--light);
 }
 
+/* Select de intervalo */
+.select-intervalo {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Campo de dias personalizado */
+#diasPersonalizadoGroup {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 /* Resumo do mês nas notas */
 .resumo-mes-nota {
     padding: 10px 20px;

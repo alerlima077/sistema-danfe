@@ -213,6 +213,20 @@
                             <input type="number" id="numParcelas" value="1" min="1" max="12">
                         </div>
                         <div class="form-group">
+                            <label>Intervalo entre parcelas</label>
+                            <select id="intervaloParcelas" class="select-intervalo">
+                                <option value="7">7 dias (Semanal)</option>
+                                <option value="15">15 dias (Quinzenal)</option>
+                                <option value="30" selected>30 dias (Mensal)</option>
+                                <option value="60">60 dias (Bimestral)</option>
+                                <option value="personalizado">Personalizado (dias)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="diasPersonalizadoGroup" style="display: none;">
+                            <label>Quantos dias entre parcelas?</label>
+                            <input type="number" id="diasPersonalizado" min="1" max="365" placeholder="Ex: 10, 20, 45">
+                        </div>
+                        <div class="form-group">
                             <label>Valor da Parcela</label>
                             <input type="text" id="valorParcela" readonly disabled placeholder="R$ 0,00">
                         </div>

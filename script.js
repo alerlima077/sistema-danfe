@@ -406,6 +406,35 @@ function calcularValorParcela() {
     }
 }
 
+// ========== FUNÇÕES PARA INTERVALO PERSONALIZADO DE PARCELAS ==========
+
+// Mostrar/esconder campo de dias personalizados
+function toggleDiasPersonalizado() {
+    const intervaloSelect = document.getElementById('intervaloParcelas');
+    const diasPersonalizadoGroup = document.getElementById('diasPersonalizadoGroup');
+    
+    if (intervaloSelect && diasPersonalizadoGroup) {
+        if (intervaloSelect.value === 'personalizado') {
+            diasPersonalizadoGroup.style.display = 'block';
+        } else {
+            diasPersonalizadoGroup.style.display = 'none';
+        }
+    }
+}
+
+// Obter o número de dias entre parcelas
+function getDiasIntervalo() {
+    const intervaloSelect = document.getElementById('intervaloParcelas');
+    if (!intervaloSelect) return 30;
+    
+    if (intervaloSelect.value === 'personalizado') {
+        const diasPersonalizado = parseInt(document.getElementById('diasPersonalizado').value);
+        return (diasPersonalizado && diasPersonalizado > 0) ? diasPersonalizado : 30;
+    }
+    
+    return parseInt(intervaloSelect.value);
+}
+
 // ========== FUNÇÕES PARA MÚLTIPLOS PRODUTOS ==========
 
 // Calcular subtotal de um produto
@@ -529,7 +558,7 @@ function coletarProdutos() {
     return produtos;
 }
 
-// ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS COM FIREBASE ==========
+// ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS COM INTERVALO PERSONALIZADO ==========
 async function adicionarParcelas() {
     if (!verificarPermissao()) return;
     
@@ -544,6 +573,7 @@ async function adicionarParcelas() {
     const valorBoleto = parseFloat(document.getElementById('valorBoleto').value);
     const numParcelas = parseInt(document.getElementById('numParcelas').value);
     const dataInicial = document.getElementById('parcelaData').value;
+    const diasIntervalo = getDiasIntervalo();
     
     // Validações
     if (!valorBoleto || valorBoleto <= 0) {
@@ -564,10 +594,33 @@ async function adicionarParcelas() {
     // Calcular valor da parcela
     const valorParcela = valorBoleto / numParcelas;
     
+    // Mostrar resumo antes de salvar
+    let mensagemConfirmacao = `📊 Resumo das parcelas:\n\n`;
+    mensagemConfirmacao += `💰 Valor total: R$ ${valorBoleto.toFixed(2)}\n`;
+    mensagemConfirmacao += `📦 Número de parcelas: ${numParcelas}\n`;
+    mensagemConfirmacao += `⏱️ Intervalo: ${diasIntervalo} dias\n`;
+    mensagemConfirmacao += `💵 Valor por parcela: R$ ${valorParcela.toFixed(2)}\n\n`;
+    mensagemConfirmacao += `📅 Datas de vencimento:\n`;
+    
+    // Calcular e mostrar as datas para confirmação
+    for (let i = 0; i < numParcelas && i < 5; i++) {
+        const dataVenc = new Date(dataInicial);
+        dataVenc.setDate(dataVenc.getDate() + (diasIntervalo * i));
+        mensagemConfirmacao += `  Parcela ${i+1}: ${formatarData(dataVenc.toISOString().split('T')[0])}\n`;
+    }
+    if (numParcelas > 5) {
+        mensagemConfirmacao += `  ... e mais ${numParcelas - 5} parcela(s)\n`;
+    }
+    
+    if (!confirm(mensagemConfirmacao + '\n\nConfirmar cadastro destas parcelas?')) {
+        return;
+    }
+    
     try {
         for (let i = 0; i < numParcelas; i++) {
             const dataVenc = new Date(dataInicial);
-            dataVenc.setMonth(dataVenc.getMonth() + i);
+            // Usar setDate para adicionar dias exatos (não meses)
+            dataVenc.setDate(dataVenc.getDate() + (diasIntervalo * i));
             
             const boleto = {
                 notaId: notaId,
@@ -578,6 +631,7 @@ async function adicionarParcelas() {
                 valorOriginal: valorBoleto,
                 numParcelasTotal: numParcelas,
                 parcelaNumero: i + 1,
+                diasIntervalo: diasIntervalo,
                 createdAt: new Date().toISOString()
             };
             
@@ -601,7 +655,7 @@ async function adicionarParcelas() {
         document.getElementById('valorParcela').value = 'R$ 0,00';
         document.getElementById('selectNotaBoleto').value = '';
         
-        mostrarNotificacao(`${numParcelas} parcela(s) de R$ ${valorParcela.toFixed(2)} adicionada(s) com sucesso!`, 'success');
+        mostrarNotificacao(`${numParcelas} parcela(s) com intervalo de ${diasIntervalo} dias adicionada(s) com sucesso!`, 'success');
     } catch (error) {
         mostrarNotificacao('Erro ao adicionar parcelas!', 'error');
     }
@@ -1314,6 +1368,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (numParcelasInput) {
         numParcelasInput.addEventListener('input', calcularValorParcela);
     }
+    
+    // ========== IMPLEMENTAÇÃO PARA INTERVALO PERSONALIZADO DE PARCELAS ==========
+    
+    // Mostrar/esconder campo de dias personalizados
+    function toggleDiasPersonalizado() {
+        const intervaloSelect = document.getElementById('intervaloParcelas');
+        const diasPersonalizadoGroup = document.getElementById('diasPersonalizadoGroup');
+        
+        if (intervaloSelect && diasPersonalizadoGroup) {
+            if (intervaloSelect.value === 'personalizado') {
+                diasPersonalizadoGroup.style.display = 'block';
+            } else {
+                diasPersonalizadoGroup.style.display = 'none';
+            }
+        }
+    }
+    
+    // Intervalo personalizado entre parcelas
+    const intervaloSelect = document.getElementById('intervaloParcelas');
+    if (intervaloSelect) {
+        intervaloSelect.addEventListener('change', toggleDiasPersonalizado);
+    }
+    
+    const diasPersonalizado = document.getElementById('diasPersonalizado');
+    if (diasPersonalizado) {
+        diasPersonalizado.addEventListener('input', () => {
+            if (diasPersonalizado.value) {
+                const valorParcela = parseFloat(document.getElementById('valorBoleto').value);
+                const numParcelas = parseInt(document.getElementById('numParcelas').value);
+                if (valorParcela && numParcelas) {
+                    calcularValorParcela();
+                }
+            }
+        });
+    }
+    
+    // Inicializar toggle de dias personalizados
+    toggleDiasPersonalizado();
     
     // ========== IMPLEMENTAÇÃO PARA MÚLTIPLOS PRODUTOS ==========
     

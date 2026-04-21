@@ -69,7 +69,10 @@
                         <p class="subtitle">Gestão de Notas Fiscais e Boletos</p>
                     </div>
                 </div>
-                <div class="header-buttons">
+                                <div class="header-buttons">
+                    <button id="sangriaPageBtn" class="btn-sangria">
+                        💰 Sangria
+                    </button>
                     <button id="boletosPageBtn" class="btn-boletos">
                         🎫 Boletos
                     </button>
@@ -265,7 +268,93 @@
                     <!-- Os boletos serão renderizados aqui agrupados por mês -->
                 </div>
             </section>
-        </main> 
+        </main>
+        <!-- Página de Sangria (Pagamentos Avulsos) -->
+        <main id="sangriaPage" class="main-content" style="display: none;">
+            <section class="card">
+                <div class="header-sangria">
+                    <button id="voltarDaSangriaBtn" class="btn-voltar">
+                        ◀ Voltar para Notas
+                    </button>
+                    <h2 class="card-title" style="margin-top: 0;">💰 Pagamentos Avulsos (Sangria)</h2>
+                </div>
+                
+                <!-- Formulário para adicionar pagamento -->
+                <div class="form-sangria">
+                    <h3>➕ Registrar Novo Pagamento</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Descrição *</label>
+                            <input type="text" id="descricaoPagamento" placeholder="Ex: Material de escritório, Café, Transporte" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor *</label>
+                            <input type="number" id="valorPagamento" step="0.001" placeholder="R$ 0,000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <select id="categoriaPagamento">
+                                <option value="material">📦 Material de escritório</option>
+                                <option value="alimentacao">🍽️ Alimentação</option>
+                                <option value="transporte">🚗 Transporte</option>
+                                <option value="servicos">🔧 Serviços</option>
+                                <option value="outros">📌 Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data/Hora *</label>
+                            <input type="datetime-local" id="dataHoraPagamento" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <button id="adicionarPagamentoBtn" class="btn-primary">➕ Registrar Pagamento</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filtro-sangria">
+                    <div class="form-group">
+                        <label>📅 Filtrar por Mês</label>
+                        <select id="selectMesSangria" class="select-mes">
+                            <option value="todos">-- Todos os meses --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🔍 Categoria</label>
+                        <select id="selectCategoriaSangria" class="select-status">
+                            <option value="todos">Todas categorias</option>
+                            <option value="material">📦 Material</option>
+                            <option value="alimentacao">🍽️ Alimentação</option>
+                            <option value="transporte">🚗 Transporte</option>
+                            <option value="servicos">🔧 Serviços</option>
+                            <option value="outros">📌 Outros</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Resumo do Período -->
+                <div class="resumo-sangria" id="resumoSangria">
+                    <div class="resumo-card">
+                        <span class="resumo-label">💰 Total do Mês:</span>
+                        <span class="resumo-valor" id="totalMesSangria">R$ 0,000</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">📊 Média por dia:</span>
+                        <span class="resumo-valor" id="mediaDiaSangria">R$ 0,000</span>
+                    </div>
+                    <div class="resumo-card">
+                        <span class="resumo-label">📅 Total de pagamentos:</span>
+                        <span class="resumo-valor" id="totalPagamentosMes">0</span>
+                    </div>
+                </div>
+
+                <!-- Lista de Pagamentos Agrupados por Mês/Dia -->
+                <div id="sangriaAgrupada" class="sangria-agrupada">
+                    <!-- Os pagamentos serão renderizados aqui agrupados por mês/dia -->
+                </div>
+            </section>
+        </main>
+
     </div>
 
     <!-- Modais -->

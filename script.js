@@ -5,6 +5,7 @@ const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
 let notas = [];
 let boletos = {};
+let pagamentos = [];
 let syncInProgress = false;
 
 // ========== FUNÇÕES DO FIREBASE ==========
@@ -203,6 +204,283 @@ async function excluirBoletoFirebase(boletoId) {
         throw error;
     }
 }
+
+// Carregar pagamentos do Firebase
+async function carregarPagamentosFirebase() {
+    if (typeof db === 'undefined') return;
+    
+    try {
+        const snapshot = await db.collection('pagamentos').orderBy('dataHora', 'desc').get();
+        pagamentos = [];
+        snapshot.forEach(doc => {
+            pagamentos.push({ id: doc.id, ...doc.data() });
+        });
+        renderSangria();
+        atualizarSelectMesesSangria();
+    } catch (error) {
+        console.error('Erro ao carregar pagamentos:', error);
+    }
+}
+
+// Salvar pagamento no Firebase
+async function salvarPagamentoFirebase(pagamento) {
+    if (typeof db !== 'undefined') {
+        const docRef = await db.collection('pagamentos').add(pagamento);
+        return docRef.id;
+    } else {
+        pagamentos.push(pagamento);
+        return pagamento.id;
+    }
+}
+
+// Excluir pagamento do Firebase
+async function excluirPagamentoFirebase(pagamentoId) {
+    if (typeof db !== 'undefined') {
+        await db.collection('pagamentos').doc(pagamentoId).delete();
+    } else {
+        pagamentos = pagamentos.filter(p => p.id !== pagamentoId);
+    }
+}
+
+// ========== FUNÇÕES DE RENDERIZAÇÃO DA SANGRIA ==========
+
+// Renderizar pagamentos agrupados
+function renderSangria() {
+    const container = document.getElementById('sangriaAgrupada');
+    if (!container) return;
+    
+    if (!verificarPermissao()) {
+        container.innerHTML = '<div class="sem-boletos">Faça login para visualizar os pagamentos</div>';
+        return;
+    }
+    
+    // Filtrar por mês
+    const mesFiltro = document.getElementById('selectMesSangria')?.value || 'todos';
+    const categoriaFiltro = document.getElementById('selectCategoriaSangria')?.value || 'todos';
+    
+    let pagamentosFiltrados = [...pagamentos];
+    
+    if (mesFiltro !== 'todos') {
+        pagamentosFiltrados = pagamentosFiltrados.filter(p => {
+            const data = new Date(p.dataHora);
+            const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+            return mesAno === mesFiltro;
+        });
+    }
+    
+    if (categoriaFiltro !== 'todos') {
+        pagamentosFiltrados = pagamentosFiltrados.filter(p => p.categoria === categoriaFiltro);
+    }
+    
+    if (pagamentosFiltrados.length === 0) {
+        container.innerHTML = '<div class="sem-boletos">📭 Nenhum pagamento registrado</div>';
+        document.getElementById('totalMesSangria').innerHTML = 'R$ 0,000';
+        document.getElementById('mediaDiaSangria').innerHTML = 'R$ 0,000';
+        document.getElementById('totalPagamentosMes').innerHTML = '0';
+        return;
+    }
+    
+    // Agrupar por dia
+    const pagamentosPorDia = {};
+    pagamentosFiltrados.forEach(pag => {
+        const data = new Date(pag.dataHora);
+        const diaStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
+        if (!pagamentosPorDia[diaStr]) pagamentosPorDia[diaStr] = [];
+        pagamentosPorDia[diaStr].push(pag);
+    });
+    
+    // Calcular totais
+    const totalMes = pagamentosFiltrados.reduce((sum, p) => sum + p.valor, 0);
+    const diasUnicos = Object.keys(pagamentosPorDia).length;
+    const mediaDia = diasUnicos > 0 ? totalMes / diasUnicos : 0;
+    
+    document.getElementById('totalMesSangria').innerHTML = `R$ ${totalMes.toFixed(3)}`;
+    document.getElementById('mediaDiaSangria').innerHTML = `R$ ${mediaDia.toFixed(3)}`;
+    document.getElementById('totalPagamentosMes').innerHTML = pagamentosFiltrados.length;
+    
+    // Ordenar dias (mais recente primeiro)
+    const diasOrdenados = Object.keys(pagamentosPorDia).sort().reverse();
+    
+    container.innerHTML = '';
+    
+    diasOrdenados.forEach(dia => {
+        const pagamentosDia = pagamentosPorDia[dia];
+        const totalDia = pagamentosDia.reduce((sum, p) => sum + p.valor, 0);
+        const dataFormatada = formatarDataCompleta(dia);
+        
+        const grupoDiv = document.createElement('div');
+        grupoDiv.className = 'grupo-dia-sangria';
+        grupoDiv.innerHTML = `
+            <div class="header-dia-sangria" onclick="toggleGrupoDiaSangria(this)">
+                <h4>📅 ${dataFormatada}</h4>
+                <span class="total-dia">💰 R$ ${totalDia.toFixed(3)}</span>
+            </div>
+            <div class="conteudo-dia-sangria">
+                <div class="table-responsive">
+                    <table class="tabela-pagamentos">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pagamentosDia.map(pag => `
+                                <tr>
+                                    <td>${formatarHora(pag.dataHora)}</td>
+                                    <td>${pag.descricao}</td>
+                                    <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></td>
+                                    <td>R$ ${pag.valor.toFixed(3)}</td>
+                                    <td><button class="btn-delete-pagamento" onclick="excluirPagamento('${pag.id}')" title="Excluir">🗑️</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        container.appendChild(grupoDiv);
+    });
+}
+
+// Alternar grupo de dia
+window.toggleGrupoDiaSangria = function(element) {
+    const conteudo = element.nextElementSibling;
+    if (conteudo.style.display === 'none') {
+        conteudo.style.display = 'block';
+    } else {
+        conteudo.style.display = 'none';
+    }
+};
+
+// Formatar data completa
+function formatarDataCompleta(dataStr) {
+    const [ano, mes, dia] = dataStr.split('-');
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${dia} de ${meses[parseInt(mes)-1]} de ${ano}`;
+}
+
+// Formatar hora
+function formatarHora(dataHoraStr) {
+    if (!dataHoraStr) return '-';
+    const data = new Date(dataHoraStr);
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Obter nome da categoria
+function getNomeCategoria(categoria) {
+    const categorias = {
+        material: '📦 Material',
+        alimentacao: '🍽️ Alimentação',
+        transporte: '🚗 Transporte',
+        servicos: '🔧 Serviços',
+        outros: '📌 Outros'
+    };
+    return categorias[categoria] || categoria;
+}
+
+// Atualizar select de meses da sangria
+function atualizarSelectMesesSangria() {
+    const select = document.getElementById('selectMesSangria');
+    if (!select) return;
+    
+    const meses = new Set();
+    pagamentos.forEach(pag => {
+        const data = new Date(pag.dataHora);
+        const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        meses.add(mesAno);
+    });
+    
+    const mesesOrdenados = Array.from(meses).sort().reverse();
+    
+    const mesAtual = select.value;
+    select.innerHTML = '<option value="todos">-- Todos os meses --</option>';
+    mesesOrdenados.forEach(mes => {
+        select.innerHTML += `<option value="${mes}">${formatarMesAno(mes)}</option>`;
+    });
+    if (mesAtual !== 'todos' && mesesOrdenados.includes(mesAtual)) select.value = mesAtual;
+}
+
+// Adicionar pagamento
+async function adicionarPagamento() {
+    if (!verificarPermissao()) return;
+    
+    const descricao = document.getElementById('descricaoPagamento').value;
+    const valor = parseFloat(document.getElementById('valorPagamento').value);
+    const categoria = document.getElementById('categoriaPagamento').value;
+    const dataHora = document.getElementById('dataHoraPagamento').value;
+    
+    if (!descricao) {
+        alert('Preencha a descrição do pagamento!');
+        return;
+    }
+    
+    if (!valor || valor <= 0) {
+        alert('Preencha o valor corretamente!');
+        return;
+    }
+    
+    if (!dataHora) {
+        alert('Preencha a data e hora!');
+        return;
+    }
+    
+    const pagamento = {
+        id: Date.now(),
+        descricao: descricao,
+        valor: valor,
+        categoria: categoria,
+        dataHora: dataHora,
+        createdAt: new Date().toISOString()
+    };
+    
+    try {
+        await salvarPagamentoFirebase(pagamento);
+        
+        if (typeof db !== 'undefined') {
+            await carregarPagamentosFirebase();
+        } else {
+            pagamentos.push(pagamento);
+            renderSangria();
+            atualizarSelectMesesSangria();
+        }
+        
+        // Limpar formulário
+        document.getElementById('descricaoPagamento').value = '';
+        document.getElementById('valorPagamento').value = '';
+        document.getElementById('dataHoraPagamento').value = '';
+        
+        mostrarNotificacao('Pagamento registrado com sucesso!', 'success');
+    } catch (error) {
+        mostrarNotificacao('Erro ao registrar pagamento!', 'error');
+    }
+}
+
+// Excluir pagamento
+window.excluirPagamento = async function(pagamentoId) {
+    if (!verificarPermissao()) return;
+    
+    if (confirm('Excluir este pagamento?')) {
+        try {
+            await excluirPagamentoFirebase(pagamentoId);
+            
+            if (typeof db !== 'undefined') {
+                await carregarPagamentosFirebase();
+            } else {
+                pagamentos = pagamentos.filter(p => p.id != pagamentoId);
+                renderSangria();
+                atualizarSelectMesesSangria();
+            }
+            
+            mostrarNotificacao('Pagamento excluído!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao excluir pagamento!', 'error');
+        }
+    }
+};
 
 // Configurar listener em tempo real
 function configurarListenerRealtime() {
@@ -1315,8 +1593,48 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('boletosPageBtn')?.addEventListener('click', () => {
         document.getElementById('notasPage').style.display = 'none';
         document.getElementById('boletosPage').style.display = 'block';
+        document.getElementById('sangriaPage').style.display = 'none';
         renderBoletosAgrupados();
     });
+    
+    // ========== IMPLEMENTAÇÃO DA TELA DE SANGRIA ==========
+    
+    // Botão Sangria
+    const sangriaPageBtn = document.getElementById('sangriaPageBtn');
+    if (sangriaPageBtn) {
+        sangriaPageBtn.addEventListener('click', () => {
+            document.getElementById('notasPage').style.display = 'none';
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('sangriaPage').style.display = 'block';
+            renderSangria();
+        });
+    }
+    
+    // Voltar da Sangria
+    const voltarDaSangriaBtn = document.getElementById('voltarDaSangriaBtn');
+    if (voltarDaSangriaBtn) {
+        voltarDaSangriaBtn.addEventListener('click', () => {
+            document.getElementById('sangriaPage').style.display = 'none';
+            document.getElementById('notasPage').style.display = 'block';
+        });
+    }
+    
+    // Adicionar pagamento
+    const adicionarPagamentoBtn = document.getElementById('adicionarPagamentoBtn');
+    if (adicionarPagamentoBtn) {
+        adicionarPagamentoBtn.addEventListener('click', adicionarPagamento);
+    }
+    
+    // Filtros Sangria
+    const selectMesSangria = document.getElementById('selectMesSangria');
+    if (selectMesSangria) {
+        selectMesSangria.addEventListener('change', () => renderSangria());
+    }
+    
+    const selectCategoriaSangria = document.getElementById('selectCategoriaSangria');
+    if (selectCategoriaSangria) {
+        selectCategoriaSangria.addEventListener('change', () => renderSangria());
+    }
 
     const voltarNotasBtn = document.getElementById('voltarNotasBtn');
     if (voltarNotasBtn) {
@@ -1347,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const numParcelasInput = document.getElementById('numParcelas');
                 
                 if (valorBoletoInput) valorBoletoInput.value = '';
-                if (valorParcelaInput) valorParcelaInput.value = 'R$ 0,00';
+                if (valorParcelaInput) valorParcelaInput.value = 'R$ 0,000';
                 if (numParcelasInput) numParcelasInput.value = '1';
             }
         });

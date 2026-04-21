@@ -570,6 +570,7 @@ function login(senha) {
         // Usar Firebase se disponível
         if (typeof db !== 'undefined') {
             carregarDadosFirebase();
+            carregarPagamentosFirebase();
             configurarListenerRealtime();
         } else {
             loadData();

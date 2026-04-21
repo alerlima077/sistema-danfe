@@ -156,10 +156,15 @@
             </section>
         </main>
 
-        <!-- Página de Boletos (oculta por padrão) -->
+                <!-- Página de Boletos (oculta por padrão) -->
         <main id="boletosPage" class="main-content" style="display: none;">
             <section class="card">
-                <h2 class="card-title">🎫 Gerenciamento de Boletos</h2>
+                <div class="header-boletos">
+                    <button id="voltarNotasBtn" class="btn-voltar">
+                        ◀ Voltar para Notas
+                    </button>
+                    <h2 class="card-title" style="margin-top: 0;">🎫 Gerenciamento de Boletos</h2>
+                </div>
                 
                 <!-- Filtro por Mês -->
                 <div class="filtro-mes">
@@ -186,7 +191,7 @@
                     <!-- Os boletos serão renderizados aqui agrupados por mês -->
                 </div>
             </section>
-        </main>
+        </main> 
     </div>
 
     <!-- Modais -->

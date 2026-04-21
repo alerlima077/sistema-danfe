@@ -665,6 +665,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('boletosPage').style.display = 'block';
         renderBoletosAgrupados();
     });
+
+    //Botão para voltar para página de notas
+    const voltarNotasBtn = document.getElementById('voltarNotasBtn');
+    if (voltarNotasBtn) {
+        voltarNotasBtn.addEventListener('click', () => {
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('notasPage').style.display = 'block';
+        });
+    }
     
     adicionarBotaoLogout();
     checkAuth();

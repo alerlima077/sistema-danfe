@@ -1,6 +1,255 @@
 // Dados armazenados
 let notas = [];
 let boletos = {};
+// ========== SISTEMA DE AUTENTICAÇÃO ==========
+const SENHA_MASTER = 'admin123'; // Mude para a senha desejada
+const SESSION_KEY = 'danfe_auth';
+const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas em milissegundos
+
+// Verificar se já está logado
+function checkAuth() {
+    const authData = localStorage.getItem(SESSION_KEY);
+    
+    if (authData) {
+        const { timestamp, authenticated } = JSON.parse(authData);
+        const now = new Date().getTime();
+        
+        // Verificar se a sessão expirou
+        if (authenticated && (now - timestamp) < SESSION_DURATION) {
+            // Sessão válida
+            document.body.classList.remove('logged-out');
+            document.body.classList.add('logged-in');
+            return true;
+        } else {
+            // Sessão expirada
+            logout();
+            return false;
+        }
+    } else {
+        document.body.classList.add('logged-out');
+        document.body.classList.remove('logged-in');
+        return false;
+    }
+}
+
+// Login
+function login(senha) {
+    if (senha === SENHA_MASTER) {
+        const authData = {
+            authenticated: true,
+            timestamp: new Date().getTime(),
+            user: 'admin'
+        };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(authData));
+        document.body.classList.remove('logged-out');
+        document.body.classList.add('logged-in');
+        
+        // Recarregar dados após login
+        loadData();
+        
+        // Mostrar mensagem de boas-vindas
+        mostrarNotificacao('Login realizado com sucesso!', 'success');
+        
+        return true;
+    } else {
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.textContent = '❌ Senha incorreta! Tente novamente.';
+        errorDiv.style.display = 'block';
+        
+        // Limpar erro após 3 segundos
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 3000);
+        
+        return false;
+    }
+}
+
+// Logout
+function logout() {
+    localStorage.removeItem(SESSION_KEY);
+    document.body.classList.add('logged-out');
+    document.body.classList.remove('logged-in');
+    
+    // Limpar formulário de login
+    const senhaInput = document.getElementById('senhaAcesso');
+    if (senhaInput) senhaInput.value = '';
+    
+    mostrarNotificacao('Logout realizado com sucesso!', 'info');
+}
+
+// Mostrar notificação
+function mostrarNotificacao(mensagem, tipo = 'info') {
+    // Criar elemento de notificação se não existir
+    let notificacao = document.getElementById('sistemaNotificacao');
+    if (!notificacao) {
+        notificacao = document.createElement('div');
+        notificacao.id = 'sistemaNotificacao';
+        notificacao.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10001;
+            font-size: 14px;
+            font-weight: 500;
+            animation: slideInRight 0.3s ease;
+            max-width: 300px;
+        `;
+        document.body.appendChild(notificacao);
+        
+        // Adicionar animação CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    opacity: 0;
+                    transform: translateX(100px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Definir cor de fundo conforme tipo
+    const cores = {
+        success: '#10b981',
+        error: '#ef4444',
+        info: '#3b82f6',
+        warning: '#f59e0b'
+    };
+    
+    notificacao.style.background = cores[tipo] || cores.info;
+    notificacao.style.color = 'white';
+    notificacao.textContent = mensagem;
+    notificacao.style.display = 'block';
+    
+    // Esconder após 3 segundos
+    setTimeout(() => {
+        notificacao.style.display = 'none';
+    }, 3000);
+}
+
+// Adicionar botão de logout no header
+function adicionarBotaoLogout() {
+    const headerButtons = document.querySelector('.header-buttons');
+    if (headerButtons && !document.getElementById('logoutBtn')) {
+        const logoutBtn = document.createElement('button');
+        logoutBtn.id = 'logoutBtn';
+        logoutBtn.className = 'btn-logout';
+        logoutBtn.innerHTML = '🚪 Sair';
+        logoutBtn.onclick = () => {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                logout();
+            }
+        };
+        headerButtons.appendChild(logoutBtn);
+    }
+}
+
+// Event listener para o formulário de login
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const senha = document.getElementById('senhaAcesso').value;
+            login(senha);
+        });
+    }
+    
+    // Adicionar botão de logout
+    adicionarBotaoLogout();
+    
+    // Verificar autenticação
+    checkAuth();
+});
+
+// Proteger funções críticas (editar, excluir, etc)
+function verificarPermissao() {
+    const authData = localStorage.getItem(SESSION_KEY);
+    if (!authData) {
+        mostrarNotificacao('Você precisa estar logado para fazer isso!', 'warning');
+        return false;
+    }
+    
+    const { authenticated, timestamp } = JSON.parse(authData);
+    const now = new Date().getTime();
+    
+    if (!authenticated || (now - timestamp) >= SESSION_DURATION) {
+        logout();
+        mostrarNotificacao('Sessão expirada! Faça login novamente.', 'warning');
+        return false;
+    }
+    
+    return true;
+}
+
+// Envolver funções críticas com verificação de permissão
+const editarNotaOriginal = window.editarNota;
+window.editarNota = function(notaId) {
+    if (verificarPermissao()) {
+        editarNotaOriginal(notaId);
+    }
+};
+
+const excluirNotaOriginal = window.excluirNota;
+window.excluirNota = function(notaId) {
+    if (verificarPermissao()) {
+        excluirNotaOriginal(notaId);
+    }
+};
+
+const editarBoletoOriginal = window.editarBoleto;
+window.editarBoleto = function(notaId, boletoIndex) {
+    if (verificarPermissao()) {
+        editarBoletoOriginal(notaId, boletoIndex);
+    }
+};
+
+const excluirBoletoOriginal = window.excluirBoleto;
+window.excluirBoleto = function(notaId, boletoIndex) {
+    if (verificarPermissao()) {
+        excluirBoletoOriginal(notaId, boletoIndex);
+    }
+};
+
+const marcarBoletoPagoOriginal = window.marcarBoletoPago;
+window.marcarBoletoPago = function(notaId, boletoIndex) {
+    if (verificarPermissao()) {
+        marcarBoletoPagoOriginal(notaId, boletoIndex);
+    }
+};
+
+// Proteger cadastro de notas
+const notaFormOriginal = document.getElementById('notaForm');
+if (notaFormOriginal) {
+    notaFormOriginal.addEventListener('submit', (e) => {
+        if (!verificarPermissao()) {
+            e.preventDefault();
+            return false;
+        }
+    });
+}
+
+// Proteger adição de parcelas
+const adicionarParcelasOriginal = document.getElementById('adicionarParcelasBtn');
+if (adicionarParcelasOriginal) {
+    adicionarParcelasOriginal.addEventListener('click', (e) => {
+        if (!verificarPermissao()) {
+            e.preventDefault();
+            mostrarNotificacao('Faça login para adicionar parcelas!', 'warning');
+            return false;
+        }
+    });
+}
 
 // Carregar dados do localStorage
 function loadData() {

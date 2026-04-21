@@ -5,17 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
     
+    <!-- Meta tags para SEO -->
+    <title>Sistema DANFE - Gestão de Notas Fiscais e Boletos</title>
+    <meta name="description" content="Sistema completo para gestão de notas fiscais DANFE e boletos bancários. Cadastre, edite, exclua e exporte dados para Excel.">
+    <meta name="keywords" content="DANFE, nota fiscal, boletos, gestão, sistema, ERP, financeiro">
+    <meta name="author" content="Sistema DANFE">
+    <meta name="robots" content="index, follow">
+    
     <!-- Forçar não-cache -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>Sistema DANFE - Gestão de Notas e Boletos</title>
     <link rel="stylesheet" href="style.css?v=<?= time() ?>">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/192">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 </head>
-<body>
+<body class="logged-out">
+    <!-- Tela de Login -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <span class="login-icon">🔐</span>
+                    <h2>Acesso Restrito</h2>
+                    <p>Sistema DANFE</p>
+                </div>
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <label>Senha de Acesso</label>
+                        <input type="password" id="senhaAcesso" placeholder="Digite a senha" required autofocus>
+                    </div>
+                    <button type="submit" class="btn-login">Entrar</button>
+                    <div id="loginError" class="login-error"></div>
+                </form>
+                <div class="login-footer">
+                    <small>Sistema seguro - Acesso autorizado apenas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="app-container">
         <!-- Header com Logo -->
         <header class="header">

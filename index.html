@@ -131,27 +131,25 @@
                 </form>
             </section>
 
-            <!-- Lista de Notas Fiscais -->
+                        <!-- Lista de Notas Fiscais -->
             <section class="card">
-                <h2 class="card-title">📋 Notas Fiscais Cadastradas</h2>
-                <div class="table-responsive">
-                    <table id="notasTable" class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>NFe</th>
-                                <th>Fornecedor</th>
-                                <th>Produto</th>
-                                <th>Qtd</th>
-                                <th>Preço Unit</th>
-                                <th>Total</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="notasTableBody">
-                            <tr><td colspan="8" class="empty-message">Nenhuma nota cadastrada</td></tr>
-                        </tbody>
-                    </table>
+                <div class="header-notas">
+                    <h2 class="card-title" style="margin-top: 0;">📋 Notas Fiscais Cadastradas</h2>
+                </div>
+                
+                <!-- Filtro por Mês nas Notas -->
+                <div class="filtro-mes-notas">
+                    <div class="form-group">
+                        <label>📅 Filtrar por Mês</label>
+                        <select id="selectMesNotas" class="select-mes">
+                            <option value="todos">-- Todos os meses --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Lista de Notas Agrupadas por Mês -->
+                <div id="notasAgrupadas" class="notas-agrupadas">
+                    <!-- As notas serão renderizadas aqui agrupadas por mês -->
                 </div>
             </section>
         </main>

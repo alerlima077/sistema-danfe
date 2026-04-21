@@ -263,35 +263,127 @@ function formatarMesAno(dataStr) {
     return `${meses[parseInt(mes)-1]} ${ano}`;
 }
 
-// Renderizar notas na tabela
+// ========== RENDERIZAR NOTAS AGRUPADAS POR MÊS ==========
 function renderNotas() {
-    const tbody = document.getElementById('notasTableBody');
-    if (!tbody) return;
+    const container = document.getElementById('notasAgrupadas');
+    if (!container) return;
     
-    if (notas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Nenhuma nota cadastrada</td></tr>';
+    if (!verificarPermissao()) {
+        container.innerHTML = '<div class="sem-boletos">Faça login para visualizar as notas</div>';
         return;
     }
     
-    tbody.innerHTML = notas.map(nota => `
-        <tr>
-            <td>${formatarData(nota.dataNota)}</td>
-            <td><strong>${nota.nfeNumero}</strong></td>
-            <td><strong>${nota.fornecedor}</strong><br><small>${nota.endereco || '-'}</small><br><small>${nota.telefone || '-'}</small></td>
-            <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
-            <td>${nota.quantidade}</td>
-            <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
-            <td><strong>R$ ${nota.precoTotal}</strong></td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-edit" onclick="editarNota(${nota.id})">✏️ Editar</button>
-                    <button class="btn-delete" onclick="excluirNota(${nota.id})">🗑️ Excluir</button>
-                    <button class="btn-boleto" onclick="verBoletosNota(${nota.id})">🎫 Boletos</button>
+    if (notas.length === 0) {
+        container.innerHTML = '<div class="sem-boletos">📭 Nenhuma nota fiscal cadastrada</div>';
+        return;
+    }
+    
+    // Ordenar notas por data (mais recente primeiro)
+    const notasOrdenadas = [...notas].sort((a, b) => new Date(b.dataNota) - new Date(a.dataNota));
+    
+    // Agrupar por mês/ano
+    const notasPorMes = {};
+    notasOrdenadas.forEach(nota => {
+        const data = new Date(nota.dataNota);
+        const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        if (!notasPorMes[mesAno]) notasPorMes[mesAno] = [];
+        notasPorMes[mesAno].push(nota);
+    });
+    
+    // Ordenar meses (do mais recente para o mais antigo)
+    const mesesOrdenados = Object.keys(notasPorMes).sort().reverse();
+    
+    // Preencher select de meses das notas
+    const selectMesNotas = document.getElementById('selectMesNotas');
+    if (selectMesNotas) {
+        const mesAtual = selectMesNotas.value;
+        selectMesNotas.innerHTML = '<option value="todos">-- Todos os meses --</option>';
+        mesesOrdenados.forEach(mes => {
+            selectMesNotas.innerHTML += `<option value="${mes}">${formatarMesAno(mes)}</option>`;
+        });
+        if (mesAtual !== 'todos' && mesesOrdenados.includes(mesAtual)) selectMesNotas.value = mesAtual;
+    }
+    
+    // Filtrar por mês
+    const mesFiltro = document.getElementById('selectMesNotas')?.value || 'todos';
+    const mesesParaMostrar = mesFiltro === 'todos' ? mesesOrdenados : [mesFiltro];
+    
+    // Renderizar grupos
+    container.innerHTML = '';
+    
+    mesesParaMostrar.forEach(mes => {
+        let notasMes = notasPorMes[mes] || [];
+        
+        if (notasMes.length === 0) return;
+        
+        // Calcular total do mês
+        const totalMes = notasMes.reduce((sum, nota) => sum + parseFloat(nota.precoTotal), 0);
+        
+        const grupoDiv = document.createElement('div');
+        grupoDiv.className = 'grupo-mes-nota';
+        grupoDiv.innerHTML = `
+            <div class="header-mes-nota" onclick="toggleGrupoMesNota(this)">
+                <h3>
+                    📅 ${formatarMesAno(mes)}
+                    <span class="badge-mes-nota">${notasMes.length} nota(s)</span>
+                </h3>
+                <span class="toggle-icon-nota">▼</span>
+            </div>
+            <div class="conteudo-mes-nota">
+                <table class="tabela-notas-mes">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>NFe</th>
+                            <th>Fornecedor</th>
+                            <th>Produto</th>
+                            <th>Qtd</th>
+                            <th>Preço Unit</th>
+                            <th>Total</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${notasMes.map(nota => `
+                            <tr>
+                                <td>${formatarData(nota.dataNota)}</td>
+                                <td><strong>${nota.nfeNumero}</strong></td>
+                                <td>
+                                    <strong>${nota.fornecedor}</strong><br>
+                                    <small>${nota.endereco || '-'}</small><br>
+                                    <small>${nota.telefone || '-'}</small>
+                                 </td>
+                                <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
+                                <td>${nota.quantidade}</td>
+                                <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
+                                <td><strong>R$ ${nota.precoTotal}</strong></td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-edit" onclick="editarNota(${nota.id})">✏️ Editar</button>
+                                        <button class="btn-delete" onclick="excluirNota(${nota.id})">🗑️ Excluir</button>
+                                        <button class="btn-boleto" onclick="verBoletosNota(${nota.id})">🎫 Boletos</button>
+                                    </div>
+                                 </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div class="resumo-mes-nota">
+                    <span>💰 Total do Mês: <span class="total-notas">R$ ${totalMes.toFixed(2)}</span></span>
+                    <span>📊 Média por Nota: R$ ${(totalMes / notasMes.length).toFixed(2)}</span>
                 </div>
-              </td>
-        </tr>
-    `).join('');
+            </div>
+        `;
+        container.appendChild(grupoDiv);
+    });
 }
+
+// Alternar expansão do grupo de notas
+window.toggleGrupoMesNota = function(element) {
+    element.classList.toggle('collapsed');
+    const conteudo = element.nextElementSibling;
+    conteudo.classList.toggle('collapsed');
+};
 
 // Cadastrar nota
 document.getElementById('notaForm')?.addEventListener('submit', (e) => {
@@ -717,6 +809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adicionarParcelasBtn')?.addEventListener('click', adicionarParcelas);
     document.getElementById('selectMes')?.addEventListener('change', () => renderBoletosAgrupados());
     document.getElementById('selectStatus')?.addEventListener('change', () => renderBoletosAgrupados());
+        // Filtro de mês para notas
+    document.getElementById('selectMesNotas')?.addEventListener('change', () => renderNotas());
     
     document.getElementById('boletosPageBtn')?.addEventListener('click', () => {
         document.getElementById('notasPage').style.display = 'none';

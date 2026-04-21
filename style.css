@@ -630,6 +630,141 @@ body.logged-in .app-container {
     font-weight: 600;
 }
 
+/* Filtro de Mês para Notas */
+.filtro-mes-notas {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    background: var(--light);
+    padding: 15px 20px;
+    border-radius: 12px;
+}
+
+/* Notas Agrupadas */
+.notas-agrupadas {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.grupo-mes-nota {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
+}
+
+.header-mes-nota {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 15px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.header-mes-nota:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.header-mes-nota h3 {
+    font-size: 18px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-mes-nota .badge-mes-nota {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.header-mes-nota .toggle-icon-nota {
+    font-size: 20px;
+    transition: transform 0.3s;
+}
+
+.header-mes-nota.collapsed .toggle-icon-nota {
+    transform: rotate(-90deg);
+}
+
+.conteudo-mes-nota {
+    display: block;
+    transition: all 0.3s;
+}
+
+.conteudo-mes-nota.collapsed {
+    display: none;
+}
+
+/* Tabela de Notas dentro do grupo */
+.tabela-notas-mes {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabela-notas-mes th {
+    background: #f1f5f9;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray);
+    font-size: 13px;
+}
+
+.tabela-notas-mes td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabela-notas-mes tr:hover {
+    background: var(--light);
+}
+
+/* Resumo do mês nas notas */
+.resumo-mes-nota {
+    padding: 10px 20px;
+    background: #f8fafc;
+    font-size: 13px;
+    color: var(--gray);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.resumo-mes-nota span {
+    font-weight: 600;
+}
+
+.resumo-mes-nota .total-notas {
+    color: #10b981;
+}
+
+/* Responsivo para notas */
+@media (max-width: 768px) {
+    .tabela-notas-mes {
+        font-size: 12px;
+    }
+    
+    .tabela-notas-mes th,
+    .tabela-notas-mes td {
+        padding: 8px;
+    }
+    
+    .header-mes-nota h3 {
+        font-size: 14px;
+    }
+}
+
 /* Filtro de Mês */
 .filtro-mes {
     display: flex;

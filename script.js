@@ -401,6 +401,7 @@ function atualizarSelectNotas() {
     });
 }
 
+
 // ========== FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
 function renderBoletosAgrupados() {
     const container = document.getElementById('boletosAgrupados');
@@ -681,6 +682,28 @@ document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
     mostrarNotificacao('Relatório exportado!', 'success');
 });
 
+// ========== CARREGAR VALOR DA NOTA AUTOMATICAMENTE ==========
+function carregarValorNota() {
+    const select = document.getElementById('selectNotaBoleto');
+    const notaId = parseInt(select.value);
+    const valorBoletoInput = document.getElementById('valorBoleto');
+    
+    if (notaId) {
+        const nota = notas.find(n => n.id === notaId);
+        if (nota && nota.precoTotal) {
+            // Carregar o valor total da nota no campo Valor do Boleto
+            valorBoletoInput.value = parseFloat(nota.precoTotal);
+            // Disparar o cálculo automático da parcela
+            calcularValorParcela();
+            mostrarNotificacao(`Valor da nota R$ ${parseFloat(nota.precoTotal).toFixed(2)} carregado!`, 'info');
+        }
+    } else {
+        // Limpar o campo se nenhuma nota for selecionada
+        valorBoletoInput.value = '';
+        document.getElementById('valorParcela').value = 'R$ 0,00';
+    }
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
@@ -701,13 +724,63 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoletosAgrupados();
     });
 
-    //Botão para voltar para página de notas
+    // Botão para voltar para página de notas
     const voltarNotasBtn = document.getElementById('voltarNotasBtn');
     if (voltarNotasBtn) {
         voltarNotasBtn.addEventListener('click', () => {
             document.getElementById('boletosPage').style.display = 'none';
             document.getElementById('notasPage').style.display = 'block';
         });
+    }
+    
+    // ⭐ NOVO: Configurar select de notas com carregamento automático do valor
+    const selectNota = document.getElementById('selectNotaBoleto');
+    if (selectNota) {
+        selectNota.addEventListener('change', (e) => {
+            const notaId = parseInt(e.target.value);
+            if (notaId) {
+                // Mostrar os containers de boletos
+                const formBoletos = document.getElementById('formBoletos');
+                const listaBoletosContainer = document.getElementById('listaBoletosContainer');
+                if (formBoletos) formBoletos.style.display = 'block';
+                if (listaBoletosContainer) listaBoletosContainer.style.display = 'block';
+                
+                // Renderizar boletos da nota selecionada
+                if (typeof renderizarBoletosPage === 'function') {
+                    renderizarBoletosPage(notaId);
+                }
+                
+                // ⭐ Carregar o valor da nota automaticamente
+                carregarValorNota();
+            } else {
+                // Esconder containers quando nenhuma nota for selecionada
+                const formBoletos = document.getElementById('formBoletos');
+                const listaBoletosContainer = document.getElementById('listaBoletosContainer');
+                if (formBoletos) formBoletos.style.display = 'none';
+                if (listaBoletosContainer) listaBoletosContainer.style.display = 'none';
+                
+                // Limpar campos
+                const valorBoletoInput = document.getElementById('valorBoleto');
+                const valorParcelaInput = document.getElementById('valorParcela');
+                const numParcelasInput = document.getElementById('numParcelas');
+                
+                if (valorBoletoInput) valorBoletoInput.value = '';
+                if (valorParcelaInput) valorParcelaInput.value = 'R$ 0,00';
+                if (numParcelasInput) numParcelasInput.value = '1';
+            }
+        });
+    }
+    
+    // ⭐ NOVO: Event listeners para cálculo automático do valor da parcela
+    const valorBoletoInput = document.getElementById('valorBoleto');
+    const numParcelasInput = document.getElementById('numParcelas');
+    
+    if (valorBoletoInput) {
+        valorBoletoInput.addEventListener('input', calcularValorParcela);
+    }
+    
+    if (numParcelasInput) {
+        numParcelasInput.addEventListener('input', calcularValorParcela);
     }
     
     adicionarBotaoLogout();

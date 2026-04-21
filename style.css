@@ -66,27 +66,6 @@ body {
     border: 2px solid var(--primary);
 }
 
-.btn-icon {
-    position: absolute;
-    bottom: -8px;
-    right: -8px;
-    background: var(--primary);
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-}
-
-.btn-icon:hover {
-    transform: scale(1.1);
-}
-
 .logo-text {
     display: flex;
     flex-direction: column;
@@ -150,6 +129,22 @@ body {
     box-shadow: 0 5px 15px rgba(16,185,129,0.3);
 }
 
+.btn-secondary {
+    background: var(--gray);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+}
+
 /* Cards */
 .card {
     background: white;
@@ -210,7 +205,7 @@ body {
     grid-column: 1 / -1;
 }
 
-/* Buttons */
+/* Buttons principais */
 .btn-primary {
     background: var(--primary);
     color: white;
@@ -227,23 +222,9 @@ body {
     background: var(--primary-dark);
 }
 
-.btn-secondary {
-    background: var(--gray);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: opacity 0.2s;
-}
-
-.btn-secondary:hover {
-    opacity: 0.9;
-}
-
-.btn-success {
-    background: var(--success);
+/* Botões de ação - ESTES SÃO OS IMPORTANTES */
+.btn-edit {
+    background: #3b82f6;
     color: white;
     border: none;
     padding: 6px 12px;
@@ -252,14 +233,18 @@ body {
     font-size: 12px;
     font-weight: 600;
     transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.btn-success:hover {
+.btn-edit:hover {
     transform: scale(1.05);
+    background: #2563eb;
 }
 
-.btn-danger {
-    background: var(--danger);
+.btn-delete {
+    background: #ef4444;
     color: white;
     border: none;
     padding: 6px 12px;
@@ -267,6 +252,62 @@ body {
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-delete:hover {
+    transform: scale(1.05);
+    background: #dc2626;
+}
+
+.btn-boleto {
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-boleto:hover {
+    transform: scale(1.05);
+    background: #d97706;
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-success:hover {
+    transform: scale(1.05);
+    background: #059669;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 /* Table */
@@ -294,6 +335,7 @@ body {
 .data-table td {
     padding: 12px;
     border-bottom: 1px solid var(--border);
+    vertical-align: middle;
 }
 
 .empty-message {
@@ -331,6 +373,79 @@ body {
     color: #3730a3;
 }
 
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--gray);
+}
+
+.modal-form {
+    padding: 20px;
+}
+
+.modal-form .form-group {
+    margin-bottom: 15px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-save {
+    background: var(--success);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-cancel {
+    background: var(--gray);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     body {
@@ -365,116 +480,14 @@ body {
     .header-buttons {
         justify-content: center;
     }
-}
-
-/* Adicione estes estilos ao final do arquivo style.css existente */
-
-/* Botões de ação */
-.btn-edit {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: transform 0.2s;
-    margin-right: 5px;
-}
-
-.btn-edit:hover {
-    transform: scale(1.05);
-    background: #2563eb;
-}
-
-.btn-delete {
-    background: #ef4444;
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    transition: transform 0.2s;
-}
-
-.btn-delete:hover {
-    transform: scale(1.05);
-    background: #dc2626;
-}
-
-.btn-boleto {
-    background: var(--warning);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    margin-right: 5px;
-    transition: transform 0.2s;
-}
-
-.btn-boleto:hover {
-    transform: scale(1.05);
-}
-
-.action-buttons {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
-/* Modal forms */
-.modal-form {
-    padding: 20px;
-}
-
-.modal-form .form-group {
-    margin-bottom: 15px;
-}
-
-.modal-form label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-    color: var(--gray);
-}
-
-.modal-form input,
-.modal-form select {
-    width: 100%;
-    padding: 10px;
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-size: 14px;
-}
-
-.modal-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.btn-save {
-    background: var(--success);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.btn-cancel {
-    background: var(--gray);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .btn-edit, .btn-delete, .btn-boleto, .btn-success {
+        width: 100%;
+        justify-content: center;
+    }
 }

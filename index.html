@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+    
+    <!-- Forçar não-cache -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>Sistema DANFE - Gestão de Notas e Boletos</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= time() ?>">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://via.placeholder.com/192">
 </head>
@@ -16,7 +22,7 @@
             <div class="header-content">
                 <div class="logo-area">
                     <div class="logo-container">
-                        <img id="logoImage" class="logo-image" src="https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Logo da Empresa">
+                        <img id="logoImage" class="logo-image" src="image/logo.png" alt="Logo da Empresa">
                     </div>
                     <div class="logo-text">
                         <h1 class="logo">
@@ -122,7 +128,6 @@
             <section class="card">
                 <h2 class="card-title">🎫 Gerenciamento de Boletos</h2>
                 
-                <!-- Seleção de Fornecedor/Nota -->
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label>Selecione a Nota Fiscal</label>
                     <select id="selectNotaBoleto" class="select-nota">
@@ -130,7 +135,6 @@
                     </select>
                 </div>
 
-                <!-- Formulário de Adição de Boletos -->
                 <div id="formBoletos" style="display: none;">
                     <h3 style="margin: 20px 0 15px 0;">➕ Adicionar Parcela(s)</h3>
                     <div class="form-grid">
@@ -152,20 +156,12 @@
                     </div>
                 </div>
 
-                <!-- Lista de Boletos -->
                 <div id="listaBoletosContainer" style="display: none;">
                     <h3 style="margin: 30px 0 15px 0;">📋 Boletos Cadastrados</h3>
                     <div class="table-responsive">
                         <table class="data-table">
                             <thead>
-                                <tr>
-                                    <th>Fornecedor</th>
-                                    <th>NFe</th>
-                                    <th>Valor</th>
-                                    <th>Vencimento</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
+                                <tr><th>Fornecedor</th><th>NFe</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr>
                             </thead>
                             <tbody id="boletosTableBody">
                                 <tr><td colspan="6" class="empty-message">Selecione uma nota para ver os boletos</td></tr>
@@ -177,7 +173,7 @@
         </main>
     </div>
 
-    <!-- Modal de Edição de Nota -->
+    <!-- Modais -->
     <div id="editNotaModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -188,7 +184,6 @@
         </div>
     </div>
 
-    <!-- Modal de Edição de Boleto -->
     <div id="editBoletoModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -199,14 +194,37 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=<?= time() ?>"></script>
     <script>
-        // Registrar Service Worker para PWA
+        // FORÇAR LIMPEZA COMPLETA DO SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('SW registrado'))
-                .catch(err => console.log('SW falhou:', err));
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker desregistrado');
+                }
+            });
         }
+        
+        // Limpar cache do navegador
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                    console.log('Cache deletado:', name);
+                }
+            });
+        }
+        
+        // Recarregar a página após limpeza
+        window.addEventListener('load', function() {
+            if (!sessionStorage.getItem('reloaded')) {
+                sessionStorage.setItem('reloaded', 'true');
+                setTimeout(function() {
+                    location.reload(true);
+                }, 100);
+            }
+        });
     </script>
 </body>
 </html>

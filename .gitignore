@@ -1,4 +1,22 @@
-.DS_Store
+# Dependências
 node_modules/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Ambiente
+.env
+.env.local
+
+# IDE
 .vscode/
+.idea/
+
+# Arquivos temporários
+*.tmp
+*.temp

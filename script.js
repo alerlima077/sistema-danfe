@@ -1820,7 +1820,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-        // Pré-definir data/hora atual no campo de pagamento
+    // Pré-definir data/hora atual no campo de pagamento
     const dataHoraPagamento = document.getElementById('dataHoraPagamento');
     if (dataHoraPagamento) {
         const agora = new Date();
@@ -1851,6 +1851,17 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleDiasPersonalizado();
     
     // ========== IMPLEMENTAÇÃO PARA MÚLTIPLOS PRODUTOS ==========
+    
+    // ⭐ BOTÃO PARA ADICIONAR NOVO PRODUTO (NOTAS) ⭐
+    const adicionarProdutoBtn = document.getElementById('adicionarProdutoBtn');
+    if (adicionarProdutoBtn) {
+        adicionarProdutoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            adicionarProduto();
+        });
+    } else {
+        console.log('Botão adicionarProdutoBtn não encontrado - verifique o ID no HTML');
+    }
     
     // Inicializar produtos (configurar event listeners do primeiro produto)
     function inicializarProdutos() {
@@ -1915,7 +1926,6 @@ document.addEventListener('DOMContentLoaded', () => {
     adicionarBotaoLogout();
     checkAuth();
 });
-
 window.onclick = (event) => {
     if (event.target === document.getElementById('editNotaModal')) fecharModal('editNotaModal');
     if (event.target === document.getElementById('editBoletoModal')) fecharModal('editBoletoModal');

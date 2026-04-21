@@ -1,27 +1,36 @@
-// Dados armazenados
-let notas = [];
-let boletos = {};
 // ========== SISTEMA DE AUTENTICAÇÃO ==========
 const SENHA_MASTER = 'admin123'; // Mude para a senha desejada
 const SESSION_KEY = 'danfe_auth';
 const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas em milissegundos
+
+// Dados armazenados
+let notas = [];
+let boletos = {};
+
+// Variáveis para armazenar funções originais
+let funcoesOriginais = {};
 
 // Verificar se já está logado
 function checkAuth() {
     const authData = localStorage.getItem(SESSION_KEY);
     
     if (authData) {
-        const { timestamp, authenticated } = JSON.parse(authData);
-        const now = new Date().getTime();
-        
-        // Verificar se a sessão expirou
-        if (authenticated && (now - timestamp) < SESSION_DURATION) {
-            // Sessão válida
-            document.body.classList.remove('logged-out');
-            document.body.classList.add('logged-in');
-            return true;
-        } else {
-            // Sessão expirada
+        try {
+            const { timestamp, authenticated } = JSON.parse(authData);
+            const now = new Date().getTime();
+            
+            // Verificar se a sessão expirou
+            if (authenticated && (now - timestamp) < SESSION_DURATION) {
+                // Sessão válida
+                document.body.classList.remove('logged-out');
+                document.body.classList.add('logged-in');
+                return true;
+            } else {
+                // Sessão expirada
+                logout();
+                return false;
+            }
+        } catch(e) {
             logout();
             return false;
         }
@@ -44,6 +53,12 @@ function login(senha) {
         document.body.classList.remove('logged-out');
         document.body.classList.add('logged-in');
         
+        // Esconder overlay de login
+        const loginOverlay = document.getElementById('loginOverlay');
+        if (loginOverlay) {
+            loginOverlay.style.display = 'none';
+        }
+        
         // Recarregar dados após login
         loadData();
         
@@ -53,13 +68,15 @@ function login(senha) {
         return true;
     } else {
         const errorDiv = document.getElementById('loginError');
-        errorDiv.textContent = '❌ Senha incorreta! Tente novamente.';
-        errorDiv.style.display = 'block';
-        
-        // Limpar erro após 3 segundos
-        setTimeout(() => {
-            errorDiv.style.display = 'none';
-        }, 3000);
+        if (errorDiv) {
+            errorDiv.textContent = '❌ Senha incorreta! Tente novamente.';
+            errorDiv.style.display = 'block';
+            
+            // Limpar erro após 3 segundos
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
         
         return false;
     }
@@ -71,16 +88,27 @@ function logout() {
     document.body.classList.add('logged-out');
     document.body.classList.remove('logged-in');
     
+    // Mostrar overlay de login novamente
+    const loginOverlay = document.getElementById('loginOverlay');
+    if (loginOverlay) {
+        loginOverlay.style.display = 'flex';
+    }
+    
     // Limpar formulário de login
     const senhaInput = document.getElementById('senhaAcesso');
     if (senhaInput) senhaInput.value = '';
+    
+    // Limpar dados da tela
+    const notasTableBody = document.getElementById('notasTableBody');
+    if (notasTableBody) {
+        notasTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Faça login para visualizar os dados</td></tr>';
+    }
     
     mostrarNotificacao('Logout realizado com sucesso!', 'info');
 }
 
 // Mostrar notificação
 function mostrarNotificacao(mensagem, tipo = 'info') {
-    // Criar elemento de notificação se não existir
     let notificacao = document.getElementById('sistemaNotificacao');
     if (!notificacao) {
         notificacao = document.createElement('div');
@@ -101,7 +129,6 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
         `;
         document.body.appendChild(notificacao);
         
-        // Adicionar animação CSS
         const style = document.createElement('style');
         style.textContent = `
             @keyframes slideInRight {
@@ -118,7 +145,6 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
         document.head.appendChild(style);
     }
     
-    // Definir cor de fundo conforme tipo
     const cores = {
         success: '#10b981',
         error: '#ef4444',
@@ -131,7 +157,6 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
     notificacao.textContent = mensagem;
     notificacao.style.display = 'block';
     
-    // Esconder após 3 segundos
     setTimeout(() => {
         notificacao.style.display = 'none';
     }, 3000);
@@ -154,25 +179,7 @@ function adicionarBotaoLogout() {
     }
 }
 
-// Event listener para o formulário de login
-document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const senha = document.getElementById('senhaAcesso').value;
-            login(senha);
-        });
-    }
-    
-    // Adicionar botão de logout
-    adicionarBotaoLogout();
-    
-    // Verificar autenticação
-    checkAuth();
-});
-
-// Proteger funções críticas (editar, excluir, etc)
+// Verificar permissão antes de ações críticas
 function verificarPermissao() {
     const authData = localStorage.getItem(SESSION_KEY);
     if (!authData) {
@@ -180,79 +187,28 @@ function verificarPermissao() {
         return false;
     }
     
-    const { authenticated, timestamp } = JSON.parse(authData);
-    const now = new Date().getTime();
-    
-    if (!authenticated || (now - timestamp) >= SESSION_DURATION) {
-        logout();
-        mostrarNotificacao('Sessão expirada! Faça login novamente.', 'warning');
+    try {
+        const { authenticated, timestamp } = JSON.parse(authData);
+        const now = new Date().getTime();
+        
+        if (!authenticated || (now - timestamp) >= SESSION_DURATION) {
+            logout();
+            mostrarNotificacao('Sessão expirada! Faça login novamente.', 'warning');
+            return false;
+        }
+        
+        return true;
+    } catch(e) {
         return false;
     }
-    
-    return true;
 }
 
-// Envolver funções críticas com verificação de permissão
-const editarNotaOriginal = window.editarNota;
-window.editarNota = function(notaId) {
-    if (verificarPermissao()) {
-        editarNotaOriginal(notaId);
-    }
-};
-
-const excluirNotaOriginal = window.excluirNota;
-window.excluirNota = function(notaId) {
-    if (verificarPermissao()) {
-        excluirNotaOriginal(notaId);
-    }
-};
-
-const editarBoletoOriginal = window.editarBoleto;
-window.editarBoleto = function(notaId, boletoIndex) {
-    if (verificarPermissao()) {
-        editarBoletoOriginal(notaId, boletoIndex);
-    }
-};
-
-const excluirBoletoOriginal = window.excluirBoleto;
-window.excluirBoleto = function(notaId, boletoIndex) {
-    if (verificarPermissao()) {
-        excluirBoletoOriginal(notaId, boletoIndex);
-    }
-};
-
-const marcarBoletoPagoOriginal = window.marcarBoletoPago;
-window.marcarBoletoPago = function(notaId, boletoIndex) {
-    if (verificarPermissao()) {
-        marcarBoletoPagoOriginal(notaId, boletoIndex);
-    }
-};
-
-// Proteger cadastro de notas
-const notaFormOriginal = document.getElementById('notaForm');
-if (notaFormOriginal) {
-    notaFormOriginal.addEventListener('submit', (e) => {
-        if (!verificarPermissao()) {
-            e.preventDefault();
-            return false;
-        }
-    });
-}
-
-// Proteger adição de parcelas
-const adicionarParcelasOriginal = document.getElementById('adicionarParcelasBtn');
-if (adicionarParcelasOriginal) {
-    adicionarParcelasOriginal.addEventListener('click', (e) => {
-        if (!verificarPermissao()) {
-            e.preventDefault();
-            mostrarNotificacao('Faça login para adicionar parcelas!', 'warning');
-            return false;
-        }
-    });
-}
+// ========== FUNÇÕES PRINCIPAIS DO SISTEMA ==========
 
 // Carregar dados do localStorage
 function loadData() {
+    if (!verificarPermissao()) return;
+    
     const storedNotas = localStorage.getItem('danfe_notas');
     const storedBoletos = localStorage.getItem('danfe_boletos');
     
@@ -266,6 +222,8 @@ function loadData() {
 
 // Salvar dados
 function saveData() {
+    if (!verificarPermissao()) return;
+    
     localStorage.setItem('danfe_notas', JSON.stringify(notas));
     localStorage.setItem('danfe_boletos', JSON.stringify(boletos));
 }
@@ -275,43 +233,22 @@ function calcularTotal(quantidade, precoUnitario) {
     return (quantidade * precoUnitario).toFixed(2);
 }
 
-// Cadastrar nota
-document.getElementById('notaForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    
-    const quantidade = parseFloat(document.getElementById('quantidade').value);
-    const precoUnitario = parseFloat(document.getElementById('precoUnitario').value);
-    
-    const nota = {
-        id: Date.now(),
-        dataNota: document.getElementById('dataNota').value,
-        nfeNumero: document.getElementById('nfeNumero').value,
-        fornecedor: document.getElementById('fornecedor').value,
-        endereco: document.getElementById('endereco').value,
-        telefone: document.getElementById('telefone').value,
-        descricao: document.getElementById('descricao').value,
-        quantidade: quantidade,
-        unidade: document.getElementById('unidade').value,
-        precoUnitario: precoUnitario,
-        precoTotal: calcularTotal(quantidade, precoUnitario)
-    };
-    
-    notas.push(nota);
-    
-    // Inicializar boletos para esta nota
-    if (!boletos[nota.id]) {
-        boletos[nota.id] = [];
-    }
-    
-    saveData();
-    renderNotas();
-    atualizarSelectNotas();
-    e.target.reset();
-});
+// Formatar data
+function formatarData(data) {
+    if (!data) return '-';
+    const [ano, mes, dia] = data.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
 
 // Renderizar notas na tabela
 function renderNotas() {
     const tbody = document.getElementById('notasTableBody');
+    if (!tbody) return;
+    
+    if (!verificarPermissao()) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Faça login para visualizar as notas</td></tr>';
+        return;
+    }
     
     if (notas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Nenhuma nota cadastrada</td></tr>';
@@ -342,8 +279,46 @@ function renderNotas() {
     `).join('');
 }
 
+// Cadastrar nota
+function cadastrarNota(e) {
+    e.preventDefault();
+    
+    if (!verificarPermissao()) return;
+    
+    const quantidade = parseFloat(document.getElementById('quantidade').value);
+    const precoUnitario = parseFloat(document.getElementById('precoUnitario').value);
+    
+    const nota = {
+        id: Date.now(),
+        dataNota: document.getElementById('dataNota').value,
+        nfeNumero: document.getElementById('nfeNumero').value,
+        fornecedor: document.getElementById('fornecedor').value,
+        endereco: document.getElementById('endereco').value,
+        telefone: document.getElementById('telefone').value,
+        descricao: document.getElementById('descricao').value,
+        quantidade: quantidade,
+        unidade: document.getElementById('unidade').value,
+        precoUnitario: precoUnitario,
+        precoTotal: calcularTotal(quantidade, precoUnitario)
+    };
+    
+    notas.push(nota);
+    
+    if (!boletos[nota.id]) {
+        boletos[nota.id] = [];
+    }
+    
+    saveData();
+    renderNotas();
+    atualizarSelectNotas();
+    e.target.reset();
+    mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
+}
+
 // Editar nota
 window.editarNota = function(notaId) {
+    if (!verificarPermissao()) return;
+    
     const nota = notas.find(n => n.id === notaId);
     if (!nota) return;
     
@@ -425,12 +400,14 @@ window.editarNota = function(notaId) {
         renderNotas();
         atualizarSelectNotas();
         fecharModal('editNotaModal');
-        alert('Nota atualizada com sucesso!');
+        mostrarNotificacao('Nota atualizada com sucesso!', 'success');
     });
 };
 
 // Excluir nota
 window.excluirNota = function(notaId) {
+    if (!verificarPermissao()) return;
+    
     const nota = notas.find(n => n.id === notaId);
     if (!nota) return;
     
@@ -441,20 +418,15 @@ window.excluirNota = function(notaId) {
         renderNotas();
         atualizarSelectNotas();
         renderizarBoletosPage();
-        alert('Nota excluída com sucesso!');
+        mostrarNotificacao('Nota excluída com sucesso!', 'success');
     }
 };
 
-// Formatar data
-function formatarData(data) {
-    if (!data) return '-';
-    const [ano, mes, dia] = data.split('-');
-    return `${dia}/${mes}/${ano}`;
-}
-
-// Atualizar select de notas na página de boletos
+// Atualizar select de notas
 function atualizarSelectNotas() {
     const select = document.getElementById('selectNotaBoleto');
+    if (!select) return;
+    
     select.innerHTML = '<option value="">-- Selecione uma nota --</option>';
     
     notas.forEach(nota => {
@@ -465,24 +437,13 @@ function atualizarSelectNotas() {
     });
 }
 
-// Selecionar nota na página de boletos
-document.getElementById('selectNotaBoleto').addEventListener('change', (e) => {
-    const notaId = parseInt(e.target.value);
-    if (notaId) {
-        document.getElementById('formBoletos').style.display = 'block';
-        document.getElementById('listaBoletosContainer').style.display = 'block';
-        renderizarBoletosPage(notaId);
-    } else {
-        document.getElementById('formBoletos').style.display = 'none';
-        document.getElementById('listaBoletosContainer').style.display = 'none';
-    }
-});
-
-// Renderizar boletos na página
+// Renderizar boletos
 function renderizarBoletosPage(notaId = null) {
+    if (!verificarPermissao()) return;
+    
     if (!notaId) {
         const select = document.getElementById('selectNotaBoleto');
-        notaId = parseInt(select.value);
+        if (select) notaId = parseInt(select.value);
         if (!notaId) return;
     }
     
@@ -494,6 +455,7 @@ function renderizarBoletosPage(notaId = null) {
     hoje.setHours(0, 0, 0, 0);
     
     const tbody = document.getElementById('boletosTableBody');
+    if (!tbody) return;
     
     if (boletosNota.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Nenhum boleto cadastrado para esta nota</td></tr>';
@@ -542,6 +504,8 @@ function renderizarBoletosPage(notaId = null) {
 
 // Editar boleto
 window.editarBoleto = function(notaId, boletoIndex) {
+    if (!verificarPermissao()) return;
+    
     const boleto = boletos[notaId][boletoIndex];
     if (!boleto) return;
     
@@ -576,12 +540,14 @@ window.editarBoleto = function(notaId, boletoIndex) {
         saveData();
         renderizarBoletosPage(notaId);
         fecharModal('editBoletoModal');
-        alert('Boleto atualizado com sucesso!');
+        mostrarNotificacao('Boleto atualizado com sucesso!', 'success');
     });
 };
 
 // Excluir boleto
 window.excluirBoleto = function(notaId, boletoIndex) {
+    if (!verificarPermissao()) return;
+    
     if (confirm('Tem certeza que deseja excluir este boleto?')) {
         boletos[notaId].splice(boletoIndex, 1);
         if (boletos[notaId].length === 0) {
@@ -589,12 +555,48 @@ window.excluirBoleto = function(notaId, boletoIndex) {
         }
         saveData();
         renderizarBoletosPage(notaId);
-        alert('Boleto excluído com sucesso!');
+        mostrarNotificacao('Boleto excluído com sucesso!', 'success');
     }
 };
 
-// Adicionar parcelas na página de boletos
-document.getElementById('adicionarParcelasBtn').addEventListener('click', () => {
+// Marcar boleto como pago
+window.marcarBoletoPago = function(notaId, boletoIndex) {
+    if (!verificarPermissao()) return;
+    
+    if (confirm('Confirmar pagamento deste boleto?')) {
+        boletos[notaId][boletoIndex].pago = true;
+        saveData();
+        renderizarBoletosPage(notaId);
+        renderNotas();
+        mostrarNotificacao('Boleto marcado como pago!', 'success');
+    }
+};
+
+// Ver boletos de uma nota
+window.verBoletosNota = function(notaId) {
+    if (!verificarPermissao()) return;
+    
+    document.getElementById('notasPage').style.display = 'none';
+    document.getElementById('boletosPage').style.display = 'block';
+    
+    const select = document.getElementById('selectNotaBoleto');
+    select.value = notaId;
+    
+    const event = new Event('change');
+    select.dispatchEvent(event);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Fechar modal
+window.fecharModal = function(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+};
+
+// Adicionar parcelas
+function adicionarParcelas() {
+    if (!verificarPermissao()) return;
+    
     const select = document.getElementById('selectNotaBoleto');
     const notaId = parseInt(select.value);
     
@@ -641,104 +643,22 @@ document.getElementById('adicionarParcelasBtn').addEventListener('click', () => 
     saveData();
     renderizarBoletosPage(notaId);
     
-    // Limpar campos
     document.getElementById('parcelaValor').value = '';
     document.getElementById('parcelaData').value = '';
     document.getElementById('numParcelas').value = '1';
     
-    alert(`${numParcelas} parcela(s) adicionada(s) com sucesso!`);
-});
-
-// Marcar boleto como pago
-window.marcarBoletoPago = function(notaId, boletoIndex) {
-    if (confirm('Confirmar pagamento deste boleto?')) {
-        boletos[notaId][boletoIndex].pago = true;
-        saveData();
-        renderizarBoletosPage(notaId);
-        renderNotas(); // Atualizar também a página de notas
-        alert('Boleto marcado como pago!');
-    }
-};
-
-// Ver boletos de uma nota específica (vindo da página de notas)
-window.verBoletosNota = function(notaId) {
-    // Mudar para página de boletos
-    document.getElementById('notasPage').style.display = 'none';
-    document.getElementById('boletosPage').style.display = 'block';
-    
-    // Selecionar a nota no select
-    const select = document.getElementById('selectNotaBoleto');
-    select.value = notaId;
-    
-    // Disparar evento change
-    const event = new Event('change');
-    select.dispatchEvent(event);
-    
-    // Scroll para o topo
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-// Fechar modal
-window.fecharModal = function(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-};
-
-// Fechar modal ao clicar fora
-window.onclick = (event) => {
-    const modalNota = document.getElementById('editNotaModal');
-    const modalBoleto = document.getElementById('editBoletoModal');
-    if (event.target === modalNota) {
-        modalNota.style.display = 'none';
-    }
-    if (event.target === modalBoleto) {
-        modalBoleto.style.display = 'none';
-    }
-};
-
-// Navegação entre páginas
-document.getElementById('boletosPageBtn').addEventListener('click', () => {
-    document.getElementById('notasPage').style.display = 'none';
-    document.getElementById('boletosPage').style.display = 'block';
-    atualizarSelectNotas();
-});
-
-// Botão para voltar (adicionar no header)
-const headerButtons = document.querySelector('.header-buttons');
-const voltarBtn = document.createElement('button');
-voltarBtn.textContent = '◀ Voltar para Notas';
-voltarBtn.className = 'btn-secondary';
-voltarBtn.style.display = 'none';
-voltarBtn.onclick = () => {
-    document.getElementById('boletosPage').style.display = 'none';
-    document.getElementById('notasPage').style.display = 'block';
-    voltarBtn.style.display = 'none';
-    document.getElementById('boletosPageBtn').style.display = 'flex';
-};
-headerButtons.appendChild(voltarBtn);
-
-// Mostrar/esconder botão voltar
-const observer = new MutationObserver(() => {
-    const boletosPage = document.getElementById('boletosPage');
-    if (boletosPage.style.display === 'block') {
-        voltarBtn.style.display = 'flex';
-        document.getElementById('boletosPageBtn').style.display = 'none';
-    } else {
-        voltarBtn.style.display = 'none';
-        document.getElementById('boletosPageBtn').style.display = 'flex';
-    }
-});
-observer.observe(document.getElementById('boletosPage'), { attributes: true, attributeFilter: ['style'] });
+    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s) com sucesso!`, 'success');
+}
 
 // Exportar para Excel
-document.getElementById('exportExcelBtn').addEventListener('click', () => {
+function exportarExcel() {
+    if (!verificarPermissao()) return;
+    
     let dadosExcel = [];
     
-    // Cabeçalho
     dadosExcel.push(['SISTEMA DANFE - RELATÓRIO COMPLETO', '', '', '', '', '', '']);
     dadosExcel.push(['Data:', new Date().toLocaleDateString('pt-BR'), '', '', '', '', '']);
     dadosExcel.push(['', '', '', '', '', '', '']);
-    
-    // Notas Fiscais
     dadosExcel.push(['NOTAS FISCAIS CADASTRADAS', '', '', '', '', '', '']);
     dadosExcel.push(['Data', 'NFe', 'Fornecedor', 'Endereço', 'Telefone', 'Produto', 'Quantidade', 'Valor Total']);
     
@@ -783,7 +703,6 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
         });
     });
     
-    // Converter para CSV
     const csv = dadosExcel.map(row => 
         row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
     ).join('\n');
@@ -797,7 +716,112 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    mostrarNotificacao('Relatório exportado com sucesso!', 'success');
+}
+
+// ========== EVENT LISTENERS E INICIALIZAÇÃO ==========
+
+// Aguardar DOM carregar completamente
+document.addEventListener('DOMContentLoaded', () => {
+    // Configurar formulário de login
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const senha = document.getElementById('senhaAcesso').value;
+            login(senha);
+        });
+    }
+    
+    // Configurar formulário de nota
+    const notaForm = document.getElementById('notaForm');
+    if (notaForm) {
+        notaForm.addEventListener('submit', cadastrarNota);
+    }
+    
+    // Configurar botão de adicionar parcelas
+    const adicionarParcelasBtn = document.getElementById('adicionarParcelasBtn');
+    if (adicionarParcelasBtn) {
+        adicionarParcelasBtn.addEventListener('click', adicionarParcelas);
+    }
+    
+    // Configurar select de notas
+    const selectNota = document.getElementById('selectNotaBoleto');
+    if (selectNota) {
+        selectNota.addEventListener('change', (e) => {
+            const notaId = parseInt(e.target.value);
+            if (notaId) {
+                document.getElementById('formBoletos').style.display = 'block';
+                document.getElementById('listaBoletosContainer').style.display = 'block';
+                renderizarBoletosPage(notaId);
+            } else {
+                document.getElementById('formBoletos').style.display = 'none';
+                document.getElementById('listaBoletosContainer').style.display = 'none';
+            }
+        });
+    }
+    
+    // Configurar navegação
+    const boletosPageBtn = document.getElementById('boletosPageBtn');
+    if (boletosPageBtn) {
+        boletosPageBtn.addEventListener('click', () => {
+            document.getElementById('notasPage').style.display = 'none';
+            document.getElementById('boletosPage').style.display = 'block';
+            atualizarSelectNotas();
+        });
+    }
+    
+    // Configurar botão de exportar
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportarExcel);
+    }
+    
+    // Adicionar botão de logout
+    adicionarBotaoLogout();
+    
+    // Configurar botão voltar
+    const headerButtons = document.querySelector('.header-buttons');
+    if (headerButtons) {
+        const voltarBtn = document.createElement('button');
+        voltarBtn.textContent = '◀ Voltar para Notas';
+        voltarBtn.className = 'btn-secondary';
+        voltarBtn.style.display = 'none';
+        voltarBtn.onclick = () => {
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('notasPage').style.display = 'block';
+            voltarBtn.style.display = 'none';
+            document.getElementById('boletosPageBtn').style.display = 'flex';
+        };
+        headerButtons.appendChild(voltarBtn);
+        
+        // Observer para mostrar/esconder botão voltar
+        const observer = new MutationObserver(() => {
+            const boletosPage = document.getElementById('boletosPage');
+            if (boletosPage && boletosPage.style.display === 'block') {
+                voltarBtn.style.display = 'flex';
+                document.getElementById('boletosPageBtn').style.display = 'none';
+            } else {
+                voltarBtn.style.display = 'none';
+                document.getElementById('boletosPageBtn').style.display = 'flex';
+            }
+        });
+        observer.observe(document.getElementById('boletosPage'), { attributes: true, attributeFilter: ['style'] });
+    }
+    
+    // Verificar autenticação
+    checkAuth();
 });
 
-// Inicializar
-loadData();
+// Fechar modais ao clicar fora
+window.onclick = (event) => {
+    const modalNota = document.getElementById('editNotaModal');
+    const modalBoleto = document.getElementById('editBoletoModal');
+    if (event.target === modalNota) {
+        modalNota.style.display = 'none';
+    }
+    if (event.target === modalBoleto) {
+        modalBoleto.style.display = 'none';
+    }
+};

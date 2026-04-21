@@ -383,7 +383,7 @@ function saveData() {
 }
 
 function calcularTotal(quantidade, precoUnitario) {
-    return (quantidade * precoUnitario).toFixed(2);
+    return (quantidade * precoUnitario).toFixed(3);
 }
 
 function formatarData(data) {
@@ -400,7 +400,7 @@ function calcularValorParcela() {
     
     if (valorBoleto && numParcelas && numParcelas > 0) {
         const valorParcela = valorBoleto / numParcelas;
-        valorParcelaInput.value = `R$ ${valorParcela.toFixed(2)}`;
+        valorParcelaInput.value = `R$ ${valorParcela.toFixed(3)}`;
     } else {
         valorParcelaInput.value = 'R$ 0,00';
     }
@@ -443,7 +443,7 @@ function calcularSubtotal(produtoItem) {
     const preco = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
     const subtotal = quantidade * preco;
     const subtotalInput = produtoItem.querySelector('.produto-subtotal');
-    subtotalInput.value = `R$ ${subtotal.toFixed(2)}`;
+    subtotalInput.value = `R$ ${subtotal.toFixed(3)}`;
     return subtotal;
 }
 
@@ -456,7 +456,7 @@ function calcularTotalNota() {
         total += quantidade * preco;
     });
     const totalInput = document.getElementById('totalNota');
-    if (totalInput) totalInput.value = `R$ ${total.toFixed(2)}`;
+    if (totalInput) totalInput.value = `R$ ${total.toFixed(3)}`;
     return total;
 }
 
@@ -548,10 +548,10 @@ function coletarProdutos() {
         if (descricao) {
             produtos.push({
                 descricao,
-                quantidade,
+                quantidade: parseFloat(quantidade.toFixed(3)),
                 unidade,
-                precoUnitario,
-                subtotal
+                precoUnitario: parseFloat(precoUnitario.toFixed(3)),
+                subtotal: parseFloat(subtotal.toFixed(3))
             });
         }
     });
@@ -575,7 +575,6 @@ async function adicionarParcelas() {
     const dataInicial = document.getElementById('parcelaData').value;
     const diasIntervalo = getDiasIntervalo();
     
-    // Validações
     if (!valorBoleto || valorBoleto <= 0) {
         alert('Preencha o valor do boleto corretamente!');
         return;
@@ -591,18 +590,16 @@ async function adicionarParcelas() {
         return;
     }
     
-    // Calcular valor da parcela
+    // Calcular valor da parcela com 3 casas decimais
     const valorParcela = valorBoleto / numParcelas;
     
-    // Mostrar resumo antes de salvar
     let mensagemConfirmacao = `📊 Resumo das parcelas:\n\n`;
-    mensagemConfirmacao += `💰 Valor total: R$ ${valorBoleto.toFixed(2)}\n`;
+    mensagemConfirmacao += `💰 Valor total: R$ ${valorBoleto.toFixed(3)}\n`;
     mensagemConfirmacao += `📦 Número de parcelas: ${numParcelas}\n`;
     mensagemConfirmacao += `⏱️ Intervalo: ${diasIntervalo} dias\n`;
-    mensagemConfirmacao += `💵 Valor por parcela: R$ ${valorParcela.toFixed(2)}\n\n`;
+    mensagemConfirmacao += `💵 Valor por parcela: R$ ${valorParcela.toFixed(3)}\n\n`;
     mensagemConfirmacao += `📅 Datas de vencimento:\n`;
     
-    // Calcular e mostrar as datas para confirmação
     for (let i = 0; i < numParcelas && i < 5; i++) {
         const dataVenc = new Date(dataInicial);
         dataVenc.setDate(dataVenc.getDate() + (diasIntervalo * i));
@@ -619,16 +616,15 @@ async function adicionarParcelas() {
     try {
         for (let i = 0; i < numParcelas; i++) {
             const dataVenc = new Date(dataInicial);
-            // Usar setDate para adicionar dias exatos (não meses)
             dataVenc.setDate(dataVenc.getDate() + (diasIntervalo * i));
             
             const boleto = {
                 notaId: notaId,
-                valor: valorParcela,
+                valor: parseFloat(valorParcela.toFixed(3)), // Salvar com 3 casas
                 dataVencimento: dataVenc.toISOString().split('T')[0],
                 pago: false,
                 id: Date.now() + i,
-                valorOriginal: valorBoleto,
+                valorOriginal: parseFloat(valorBoleto.toFixed(3)),
                 numParcelasTotal: numParcelas,
                 parcelaNumero: i + 1,
                 diasIntervalo: diasIntervalo,
@@ -638,7 +634,6 @@ async function adicionarParcelas() {
             await salvarBoletoFirebase(boleto);
         }
         
-        // Recarregar dados
         if (typeof db !== 'undefined') {
             await carregarDadosFirebase();
         } else {
@@ -648,11 +643,10 @@ async function adicionarParcelas() {
             atualizarSelectNotas();
         }
         
-        // Limpar campos
         document.getElementById('valorBoleto').value = '';
         document.getElementById('numParcelas').value = '1';
         document.getElementById('parcelaData').value = '';
-        document.getElementById('valorParcela').value = 'R$ 0,00';
+        document.getElementById('valorParcela').value = 'R$ 0,000';
         document.getElementById('selectNotaBoleto').value = '';
         
         mostrarNotificacao(`${numParcelas} parcela(s) com intervalo de ${diasIntervalo} dias adicionada(s) com sucesso!`, 'success');
@@ -765,7 +759,7 @@ function renderNotas() {
                                         ${nota.produtos ? nota.produtos.map(p => `
                                             <div style="border-bottom: 1px solid #eee; padding: 5px 0;">
                                                 <strong>${p.descricao}</strong><br>
-                                                ${p.quantidade} ${p.unidade} x R$ ${p.precoUnitario.toFixed(2)} = R$ ${p.subtotal.toFixed(2)}
+                                                ${p.quantidade} ${p.unidade} x R$ ${p.precoUnitario.toFixed(3)} = R$ ${p.subtotal.toFixed(3)}
                                             </div>
                                         `).join('') : `
                                             <div>
@@ -824,8 +818,11 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
         fornecedor: document.getElementById('fornecedor').value,
         endereco: document.getElementById('endereco').value,
         telefone: document.getElementById('telefone').value,
-        produtos: produtos,  // Array de produtos
-        precoTotal: totalNota,
+        produtos: produtos.map(p => ({
+            ...p,
+            subtotal: parseFloat(p.subtotal.toFixed(3))
+        })),
+        precoTotal: parseFloat(totalNota.toFixed(3)),
         createdAt: new Date().toISOString()
     };
     
@@ -842,14 +839,12 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
             atualizarSelectNotas();
         }
         
-        // Limpar formulário
         e.target.reset();
-        // Limpar produtos (deixar apenas um vazio)
         const container = document.getElementById('produtosContainer');
         container.innerHTML = '';
-        adicionarProduto(); // Adicionar um produto vazio
+        adicionarProduto();
         
-        document.getElementById('totalNota').value = 'R$ 0,00';
+        document.getElementById('totalNota').value = 'R$ 0,000';
         mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
     } catch (error) {
         mostrarNotificacao('Erro ao cadastrar nota!', 'error');

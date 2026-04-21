@@ -320,7 +320,8 @@ function renderSangria() {
                         <thead>
                             <tr>
                                 <th>Hora</th>
-                                <th>Descrição</th>
+                                <th>Estabelecimento</th>
+                                <th>Itens</th>
                                 <th>Categoria</th>
                                 <th>Valor</th>
                                 <th>Ações</th>
@@ -329,14 +330,17 @@ function renderSangria() {
                         <tbody>
                             ${pagamentosDia.map(pag => `
                                 <tr>
-                                    <td>${formatarHora(pag.dataHora)}</td>
+                                    <td>${formatarHora(pag.dataHora)}</span></td>
+                                    <td>
+                                        <strong>${pag.estabelecimento || pag.descricao.split(' - ')[0]}</strong>
+                                    </td>
                                     <td>
                                         <div title="${pag.itens ? pag.itens.map(i => `${i.descricao}: R$ ${i.valor.toFixed(3)}`).join('\n') : pag.descricao}">
-                                            <strong>${pag.descricao}</strong>
-                                            ${pag.itens && pag.itens.length > 1 ? `<br><small style="color: #666; cursor: help;">📋 ${pag.itens.length} itens (passe o mouse)</small>` : ''}
+                                            ${pag.itens ? pag.itens.map(i => i.descricao).join(', ') : pag.descricao}
+                                            ${pag.itens && pag.itens.length > 1 ? `<br><small style="color: #666; cursor: help;">📋 ${pag.itens.length} itens</small>` : ''}
                                         </div>
                                     </td>
-                                    <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></td>
+                                    <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></span></td>
                                     <td>R$ ${(pag.valorTotal || pag.valor).toFixed(3)}</span></td>
                                     <td><button class="btn-delete-pagamento" onclick="excluirPagamento('${pag.id}')" title="Excluir">🗑️</button></td>
                                 </tr>
@@ -414,11 +418,17 @@ async function adicionarPagamento() {
     
     const itens = coletarItensPagamento();
     const totalPagamento = calcularTotalPagamento();
+    const estabelecimento = document.getElementById('estabelecimento').value;
     const categoria = document.getElementById('categoriaPagamento').value;
     const dataHora = document.getElementById('dataHoraPagamento').value;
     
     if (itens.length === 0) {
         alert('Adicione pelo menos um item!');
+        return;
+    }
+    
+    if (!estabelecimento) {
+        alert('Preencha o campo Estabelecimento/Serviço!');
         return;
     }
     
@@ -433,11 +443,12 @@ async function adicionarPagamento() {
     }
     
     // Criar descrição resumida para exibição na lista
-    const descricaoResumida = itens.map(item => item.descricao).join(', ');
+    const descricaoResumida = `${estabelecimento} - ${itens.map(item => item.descricao).join(', ')}`;
     
     const pagamento = {
         id: Date.now(),
         itens: itens,
+        estabelecimento: estabelecimento,
         descricao: descricaoResumida,
         valorTotal: totalPagamento,
         categoria: categoria,
@@ -461,6 +472,7 @@ async function adicionarPagamento() {
         container.innerHTML = '';
         adicionarItemPagamento(); // Adicionar um item vazio
         
+        document.getElementById('estabelecimento').value = '';
         document.getElementById('categoriaPagamento').value = 'alimentacao';
         document.getElementById('dataHoraPagamento').value = '';
         document.getElementById('totalPagamento').value = 'R$ 0,000';
@@ -1793,6 +1805,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 diasPersonalizadoGroup.style.display = 'none';
             }
         }
+    }
+
+        // Pré-definir data/hora atual no campo de pagamento
+    const dataHoraPagamento = document.getElementById('dataHoraPagamento');
+    if (dataHoraPagamento) {
+        const agora = new Date();
+        agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
+        dataHoraPagamento.value = agora.toISOString().slice(0, 16);
     }
     
     // Intervalo personalizado entre parcelas

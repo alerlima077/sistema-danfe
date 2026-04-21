@@ -406,6 +406,129 @@ function calcularValorParcela() {
     }
 }
 
+// ========== FUNÇÕES PARA MÚLTIPLOS PRODUTOS ==========
+
+// Calcular subtotal de um produto
+function calcularSubtotal(produtoItem) {
+    const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
+    const preco = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+    const subtotal = quantidade * preco;
+    const subtotalInput = produtoItem.querySelector('.produto-subtotal');
+    subtotalInput.value = `R$ ${subtotal.toFixed(2)}`;
+    return subtotal;
+}
+
+// Calcular total da nota
+function calcularTotalNota() {
+    let total = 0;
+    document.querySelectorAll('.produto-item').forEach(produtoItem => {
+        const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
+        const preco = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+        total += quantidade * preco;
+    });
+    const totalInput = document.getElementById('totalNota');
+    if (totalInput) totalInput.value = `R$ ${total.toFixed(2)}`;
+    return total;
+}
+
+// Adicionar novo produto
+function adicionarProduto() {
+    const container = document.getElementById('produtosContainer');
+    const produtoCount = document.querySelectorAll('.produto-item').length + 1;
+    
+    const novoProduto = document.createElement('div');
+    novoProduto.className = 'produto-item';
+    novoProduto.innerHTML = `
+        <div class="produto-header">
+            <strong>Produto ${produtoCount}</strong>
+            <button type="button" class="btn-remove-produto" onclick="removerProduto(this)">🗑️ Remover</button>
+        </div>
+        <div class="produto-fields">
+            <div class="form-group">
+                <label>Descrição</label>
+                <input type="text" class="produto-descricao" placeholder="Descrição do produto" required>
+            </div>
+            <div class="form-group">
+                <label>Quantidade</label>
+                <input type="number" class="produto-quantidade" step="0.01" placeholder="Qtd" required>
+            </div>
+            <div class="form-group">
+                <label>Unidade</label>
+                <select class="produto-unidade">
+                    <option value="UN">UN</option>
+                    <option value="PC">PC</option>
+                    <option value="KG">KG</option>
+                    <option value="L">L</option>
+                    <option value="M">M</option>
+                    <option value="CX">CX</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Preço Unitário</label>
+                <input type="number" class="produto-preco" step="0.01" placeholder="R$" required>
+            </div>
+            <div class="form-group">
+                <label>Subtotal</label>
+                <input type="text" class="produto-subtotal" readonly disabled placeholder="R$ 0,00">
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(novoProduto);
+    
+    // Adicionar event listeners para os novos campos
+    const quantidadeInput = novoProduto.querySelector('.produto-quantidade');
+    const precoInput = novoProduto.querySelector('.produto-preco');
+    
+    quantidadeInput.addEventListener('input', () => {
+        calcularSubtotal(novoProduto);
+        calcularTotalNota();
+    });
+    
+    precoInput.addEventListener('input', () => {
+        calcularSubtotal(novoProduto);
+        calcularTotalNota();
+    });
+}
+
+// Remover produto
+function removerProduto(botao) {
+    const produtoItem = botao.closest('.produto-item');
+    if (document.querySelectorAll('.produto-item').length > 1) {
+        produtoItem.remove();
+        // Renumerar produtos
+        document.querySelectorAll('.produto-item').forEach((item, index) => {
+            item.querySelector('.produto-header strong').textContent = `Produto ${index + 1}`;
+        });
+        calcularTotalNota();
+    } else {
+        alert('A nota deve ter pelo menos um produto!');
+    }
+}
+
+// Coletar dados dos produtos para salvar
+function coletarProdutos() {
+    const produtos = [];
+    document.querySelectorAll('.produto-item').forEach(produtoItem => {
+        const descricao = produtoItem.querySelector('.produto-descricao').value;
+        const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
+        const unidade = produtoItem.querySelector('.produto-unidade').value;
+        const precoUnitario = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+        const subtotal = quantidade * precoUnitario;
+        
+        if (descricao) {
+            produtos.push({
+                descricao,
+                quantidade,
+                unidade,
+                precoUnitario,
+                subtotal
+            });
+        }
+    });
+    return produtos;
+}
+
 // ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS COM FIREBASE ==========
 async function adicionarParcelas() {
     if (!verificarPermissao()) return;
@@ -518,6 +641,11 @@ function renderNotas() {
         notasPorMes[mesAno].push(nota);
     });
     
+    // Para cada mês, garantir que as notas estejam ordenadas por data (mais recente primeiro)
+    for (let mes in notasPorMes) {
+        notasPorMes[mes].sort((a, b) => new Date(b.dataNota) - new Date(a.dataNota));
+    }
+    
     // Ordenar meses (do mais recente para o mais antigo)
     const mesesOrdenados = Object.keys(notasPorMes).sort().reverse();
     
@@ -565,10 +693,7 @@ function renderNotas() {
                                 <th>Data</th>
                                 <th>NFe</th>
                                 <th>Fornecedor</th>
-                                <th>Produto</th>
-                                <th>Qtd</th>
-                                <th>Preço Unit</th>
-                                <th>Total</th>
+                                <th>Produto(s)</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
@@ -581,11 +706,20 @@ function renderNotas() {
                                         <strong>${nota.fornecedor}</strong><br>
                                         <small>${nota.endereco || '-'}</small><br>
                                         <small>${nota.telefone || '-'}</small>
+                                    </td>
+                                    <td>
+                                        ${nota.produtos ? nota.produtos.map(p => `
+                                            <div style="border-bottom: 1px solid #eee; padding: 5px 0;">
+                                                <strong>${p.descricao}</strong><br>
+                                                ${p.quantidade} ${p.unidade} x R$ ${p.precoUnitario.toFixed(2)} = R$ ${p.subtotal.toFixed(2)}
+                                            </div>
+                                        `).join('') : `
+                                            <div>
+                                                <strong>${nota.descricao || '-'}</strong><br>
+                                                ${nota.quantidade || '-'} ${nota.unidade || '-'} x R$ ${nota.precoUnitario ? nota.precoUnitario.toFixed(2) : '0,00'} = R$ ${nota.precoTotal || '0,00'}
+                                            </div>
+                                        `}
                                      </td>
-                                    <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
-                                    <td>${nota.quantidade}</td>
-                                    <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
-                                    <td><strong>R$ ${nota.precoTotal}</strong></td>
                                     <td>
                                         <div class="action-buttons">
                                             <button class="btn-edit" onclick="editarNota('${nota.firebaseId || nota.id}')">✏️ Editar</button>
@@ -615,13 +749,19 @@ window.toggleGrupoMesNota = function(element) {
     conteudo.classList.toggle('collapsed');
 };
 
-// Cadastrar nota com Firebase
+// Cadastrar nota com múltiplos produtos
 document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!verificarPermissao()) return;
     
-    const quantidade = parseFloat(document.getElementById('quantidade').value);
-    const precoUnitario = parseFloat(document.getElementById('precoUnitario').value);
+    const produtos = coletarProdutos();
+    
+    if (produtos.length === 0) {
+        alert('Adicione pelo menos um produto!');
+        return;
+    }
+    
+    const totalNota = calcularTotalNota();
     
     const nota = {
         id: Date.now(),
@@ -630,11 +770,8 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
         fornecedor: document.getElementById('fornecedor').value,
         endereco: document.getElementById('endereco').value,
         telefone: document.getElementById('telefone').value,
-        descricao: document.getElementById('descricao').value,
-        quantidade: quantidade,
-        unidade: document.getElementById('unidade').value,
-        precoUnitario: precoUnitario,
-        precoTotal: calcularTotal(quantidade, precoUnitario),
+        produtos: produtos,  // Array de produtos
+        precoTotal: totalNota,
         createdAt: new Date().toISOString()
     };
     
@@ -651,7 +788,14 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
             atualizarSelectNotas();
         }
         
+        // Limpar formulário
         e.target.reset();
+        // Limpar produtos (deixar apenas um vazio)
+        const container = document.getElementById('produtosContainer');
+        container.innerHTML = '';
+        adicionarProduto(); // Adicionar um produto vazio
+        
+        document.getElementById('totalNota').value = 'R$ 0,00';
         mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
     } catch (error) {
         mostrarNotificacao('Erro ao cadastrar nota!', 'error');
@@ -1170,6 +1314,63 @@ document.addEventListener('DOMContentLoaded', () => {
     if (numParcelasInput) {
         numParcelasInput.addEventListener('input', calcularValorParcela);
     }
+    
+    // ========== IMPLEMENTAÇÃO PARA MÚLTIPLOS PRODUTOS ==========
+    
+    // Inicializar produtos (configurar event listeners do primeiro produto)
+    function inicializarProdutos() {
+        const primeiroProduto = document.querySelector('.produto-item');
+        if (primeiroProduto) {
+            const qtdInput = primeiroProduto.querySelector('.produto-quantidade');
+            const precoInput = primeiroProduto.querySelector('.produto-preco');
+            if (qtdInput) {
+                qtdInput.addEventListener('input', () => {
+                    calcularSubtotal(primeiroProduto);
+                    calcularTotalNota();
+                });
+            }
+            if (precoInput) {
+                precoInput.addEventListener('input', () => {
+                    calcularSubtotal(primeiroProduto);
+                    calcularTotalNota();
+                });
+            }
+        }
+    }
+    
+    // Botão para adicionar novo produto
+    const adicionarProdutoBtn = document.getElementById('adicionarProdutoBtn');
+    if (adicionarProdutoBtn) {
+        adicionarProdutoBtn.addEventListener('click', adicionarProduto);
+    }
+    
+    // Inicializar produtos ao carregar a página
+    inicializarProdutos();
+    
+    // Se houver produtos já existentes (edição), configurar todos
+    function configurarTodosProdutos() {
+        document.querySelectorAll('.produto-item').forEach(produtoItem => {
+            const qtdInput = produtoItem.querySelector('.produto-quantidade');
+            const precoInput = produtoItem.querySelector('.produto-preco');
+            if (qtdInput) {
+                qtdInput.removeEventListener('input', () => calcularSubtotal(produtoItem));
+                qtdInput.addEventListener('input', () => {
+                    calcularSubtotal(produtoItem);
+                    calcularTotalNota();
+                });
+            }
+            if (precoInput) {
+                precoInput.removeEventListener('input', () => calcularSubtotal(produtoItem));
+                precoInput.addEventListener('input', () => {
+                    calcularSubtotal(produtoItem);
+                    calcularTotalNota();
+                });
+            }
+        });
+    }
+    
+    // Chamar configuração de todos produtos
+    configurarTodosProdutos();
     
     adicionarBotaoLogout();
     checkAuth();

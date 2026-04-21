@@ -106,29 +106,55 @@
                         <label>Telefone</label>
                         <input type="tel" id="telefone" placeholder="(00) 00000-0000">
                     </div>
-                    <div class="form-group">
-                        <label>Descrição do Produto *</label>
-                        <input type="text" id="descricao" required placeholder="Produto/Serviço">
+                    
+                    <!-- Produtos da Nota -->
+                    <div class="form-group full-width">
+                        <label>Produtos da Nota *</label>
+                        <div id="produtosContainer" class="produtos-container">
+                            <div class="produto-item">
+                                <div class="produto-header">
+                                    <strong>Produto 1</strong>
+                                    <button type="button" class="btn-remove-produto" onclick="removerProduto(this)" style="display: none;">🗑️ Remover</button>
+                                </div>
+                                <div class="produto-fields">
+                                    <div class="form-group">
+                                        <label>Descrição</label>
+                                        <input type="text" class="produto-descricao" placeholder="Descrição do produto" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Quantidade</label>
+                                        <input type="number" class="produto-quantidade" step="0.01" placeholder="Qtd" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Unidade</label>
+                                        <select class="produto-unidade">
+                                            <option value="UN">UN</option>
+                                            <option value="PC">PC</option>
+                                            <option value="KG">KG</option>
+                                            <option value="L">L</option>
+                                            <option value="M">M</option>
+                                            <option value="CX">CX</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Preço Unitário</label>
+                                        <input type="number" class="produto-preco" step="0.01" placeholder="R$" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Subtotal</label>
+                                        <input type="text" class="produto-subtotal" readonly disabled placeholder="R$ 0,00">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="adicionarProdutoBtn" class="btn-secondary" style="margin-top: 10px;">➕ Adicionar outro produto</button>
                     </div>
-                    <div class="form-group">
-                        <label>Quantidade *</label>
-                        <input type="number" id="quantidade" step="0.01" required>
+                    
+                    <div class="form-group full-width">
+                        <label>Valor Total da Nota</label>
+                        <input type="text" id="totalNota" readonly disabled style="background: #f1f5f9; font-weight: bold; font-size: 16px;">
                     </div>
-                    <div class="form-group">
-                        <label>Unidade</label>
-                        <select id="unidade">
-                            <option value="UN">UN</option>
-                            <option value="PC">PC</option>
-                            <option value="KG">KG</option>
-                            <option value="L">L</option>
-                            <option value="M">M</option>
-                            <option value="CX">CX</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Preço Unitário *</label>
-                        <input type="number" id="precoUnitario" step="0.01" required>
-                    </div>
+                    
                     <div class="form-group full-width">
                         <button type="submit" class="btn-primary">➕ Cadastrar Nota</button>
                     </div>

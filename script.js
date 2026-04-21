@@ -883,6 +883,14 @@ function calcularTotalPagamento() {
 // Adicionar novo item ao pagamento
 function adicionarItemPagamento() {
     const container = document.getElementById('itensPagamentoContainer');
+    
+    // VERIFICAÇÃO: Se o container não existe, mostra erro e sai
+    if (!container) {
+        console.error('Container itensPagamentoContainer não encontrado!');
+        alert('Erro: Não foi possível adicionar o item. Container não encontrado.');
+        return;
+    }
+    
     const itemCount = document.querySelectorAll('.item-pagamento').length + 1;
     
     const novoItem = document.createElement('div');
@@ -908,9 +916,14 @@ function adicionarItemPagamento() {
     
     // Adicionar event listener para o novo item
     const valorInput = novoItem.querySelector('.item-valor');
-    valorInput.addEventListener('input', () => {
-        calcularTotalPagamento();
-    });
+    if (valorInput) {
+        valorInput.addEventListener('input', () => {
+            calcularTotalPagamento();
+        });
+    }
+    
+    // Recalcular total após adicionar
+    calcularTotalPagamento();
 }
 
 // Remover item do pagamento
@@ -1860,10 +1873,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Botão para adicionar novo produto
-    const adicionarProdutoBtn = document.getElementById('adicionarProdutoBtn');
-    if (adicionarProdutoBtn) {
-        adicionarProdutoBtn.addEventListener('click', adicionarProduto);
+    // Botão para adicionar novo item na SANGRIA
+    const adicionarItemPagamentoBtn = document.getElementById('adicionarItemPagamentoBtn');
+    if (adicionarItemPagamentoBtn) {
+        adicionarItemPagamentoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            adicionarItemPagamento();
+        });
+    } else {
+        console.log('Botão adicionarItemPagamentoBtn não encontrado - verifique o ID no HTML');
     }
     
     // Inicializar produtos ao carregar a página

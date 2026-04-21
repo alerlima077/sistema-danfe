@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f172a">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     
     <!-- Meta tags para SEO -->
     <title>Sistema DANFE - Gestão de Notas Fiscais e Boletos</title>
@@ -245,7 +249,9 @@
         </div>
     </div>
 
+    <script src="firebase-config.js"></script>
     <script src="script.js?v=<?= time() ?>"></script>
+    
     <script>
         // FORÇAR LIMPEZA COMPLETA DO SERVICE WORKER
         if ('serviceWorker' in navigator) {

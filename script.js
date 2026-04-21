@@ -5,6 +5,223 @@ const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
 let notas = [];
 let boletos = {};
+let syncInProgress = false;
+
+// ========== FUNÇÕES DO FIREBASE ==========
+
+// Carregar dados do Firebase
+async function carregarDadosFirebase() {
+    if (syncInProgress) return;
+    syncInProgress = true;
+    
+    try {
+        // Verificar se o Firebase está disponível
+        if (typeof db === 'undefined') {
+            console.log('Firebase não disponível, usando LocalStorage');
+            loadData();
+            syncInProgress = false;
+            return;
+        }
+        
+        // Carregar notas
+        const notasSnapshot = await db.collection('notas').orderBy('dataNota', 'desc').get();
+        notas = [];
+        notasSnapshot.forEach(doc => {
+            const notaData = doc.data();
+            notas.push({ 
+                id: doc.id, 
+                ...notaData, 
+                firebaseId: doc.id,
+                // Manter compatibilidade com IDs antigos
+                idOriginal: notaData.idOriginal || null
+            });
+        });
+        
+        // Carregar boletos
+        const boletosSnapshot = await db.collection('boletos').get();
+        boletos = {};
+        boletosSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (!boletos[data.notaId]) boletos[data.notaId] = [];
+            boletos[data.notaId].push({ ...data, firebaseId: doc.id });
+        });
+        
+        // Ordenar boletos por data
+        for (let notaId in boletos) {
+            boletos[notaId].sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+        }
+        
+        renderNotas();
+        atualizarSelectNotas();
+        renderBoletosAgrupados();
+        
+        console.log('Dados sincronizados com Firebase');
+    } catch (error) {
+        console.error('Erro ao carregar do Firebase:', error);
+        mostrarNotificacao('Erro ao sincronizar dados! Usando modo offline.', 'warning');
+        // Fallback para LocalStorage
+        loadData();
+    } finally {
+        syncInProgress = false;
+    }
+}
+
+// Salvar nota no Firebase
+async function salvarNotaFirebase(nota) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            notas.push(nota);
+            saveData();
+            return nota.id;
+        }
+        
+        const notaSemId = { ...nota };
+        delete notaSemId.firebaseId;
+        delete notaSemId.id;
+        // Guardar o ID original para compatibilidade
+        notaSemId.idOriginal = nota.id;
+        
+        const docRef = await db.collection('notas').add(notaSemId);
+        nota.firebaseId = docRef.id;
+        return docRef.id;
+    } catch (error) {
+        console.error('Erro ao salvar nota:', error);
+        throw error;
+    }
+}
+
+// Atualizar nota no Firebase
+async function atualizarNotaFirebase(notaId, dados) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            const index = notas.findIndex(n => n.id == notaId || n.firebaseId == notaId);
+            if (index !== -1) {
+                notas[index] = { ...notas[index], ...dados };
+                saveData();
+            }
+            return;
+        }
+        
+        await db.collection('notas').doc(notaId).update(dados);
+    } catch (error) {
+        console.error('Erro ao atualizar nota:', error);
+        throw error;
+    }
+}
+
+// Excluir nota do Firebase
+async function excluirNotaFirebase(notaId) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            notas = notas.filter(n => n.id != notaId && n.firebaseId != notaId);
+            delete boletos[notaId];
+            saveData();
+            return;
+        }
+        
+        // Excluir a nota
+        await db.collection('notas').doc(notaId).delete();
+        
+        // Excluir todos os boletos relacionados
+        const boletosSnapshot = await db.collection('boletos').where('notaId', '==', notaId).get();
+        const batch = db.batch();
+        boletosSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+    } catch (error) {
+        console.error('Erro ao excluir nota:', error);
+        throw error;
+    }
+}
+
+// Salvar boleto no Firebase
+async function salvarBoletoFirebase(boleto) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            if (!boletos[boleto.notaId]) boletos[boleto.notaId] = [];
+            boletos[boleto.notaId].push(boleto);
+            saveData();
+            return boleto.id;
+        }
+        
+        const docRef = await db.collection('boletos').add(boleto);
+        return docRef.id;
+    } catch (error) {
+        console.error('Erro ao salvar boleto:', error);
+        throw error;
+    }
+}
+
+// Atualizar boleto no Firebase
+async function atualizarBoletoFirebase(boletoId, dados) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            for (let notaId in boletos) {
+                const index = boletos[notaId].findIndex(b => b.id == boletoId || b.firebaseId == boletoId);
+                if (index !== -1) {
+                    boletos[notaId][index] = { ...boletos[notaId][index], ...dados };
+                    saveData();
+                    break;
+                }
+            }
+            return;
+        }
+        
+        await db.collection('boletos').doc(boletoId).update(dados);
+    } catch (error) {
+        console.error('Erro ao atualizar boleto:', error);
+        throw error;
+    }
+}
+
+// Excluir boleto do Firebase
+async function excluirBoletoFirebase(boletoId) {
+    try {
+        if (typeof db === 'undefined') {
+            // Fallback para LocalStorage
+            for (let notaId in boletos) {
+                const index = boletos[notaId].findIndex(b => b.id == boletoId || b.firebaseId == boletoId);
+                if (index !== -1) {
+                    boletos[notaId].splice(index, 1);
+                    if (boletos[notaId].length === 0) delete boletos[notaId];
+                    saveData();
+                    break;
+                }
+            }
+            return;
+        }
+        
+        await db.collection('boletos').doc(boletoId).delete();
+    } catch (error) {
+        console.error('Erro ao excluir boleto:', error);
+        throw error;
+    }
+}
+
+// Configurar listener em tempo real
+function configurarListenerRealtime() {
+    if (typeof db === 'undefined') return;
+    
+    // Listener para notas
+    db.collection('notas').onSnapshot((snapshot) => {
+        if (!syncInProgress) {
+            carregarDadosFirebase();
+        }
+    });
+    
+    // Listener para boletos
+    db.collection('boletos').onSnapshot((snapshot) => {
+        if (!syncInProgress) {
+            carregarDadosFirebase();
+        }
+    });
+}
 
 // ========== FUNÇÕES DE AUTENTICAÇÃO ==========
 function checkAuth() {
@@ -48,7 +265,14 @@ function login(senha) {
         const loginOverlay = document.getElementById('loginOverlay');
         if (loginOverlay) loginOverlay.style.display = 'none';
         
-        loadData();
+        // Usar Firebase se disponível
+        if (typeof db !== 'undefined') {
+            carregarDadosFirebase();
+            configurarListenerRealtime();
+        } else {
+            loadData();
+        }
+        
         mostrarNotificacao('Login realizado com sucesso!', 'success');
         return true;
     } else {
@@ -182,16 +406,12 @@ function calcularValorParcela() {
     }
 }
 
-// Event listeners para cálculo automático
-document.getElementById('valorBoleto')?.addEventListener('input', calcularValorParcela);
-document.getElementById('numParcelas')?.addEventListener('input', calcularValorParcela);
-
-// ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS ==========
-function adicionarParcelas() {
+// ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS COM FIREBASE ==========
+async function adicionarParcelas() {
     if (!verificarPermissao()) return;
     
     const select = document.getElementById('selectNotaBoleto');
-    const notaId = parseInt(select.value);
+    const notaId = select.value;
     
     if (!notaId) {
         alert('Selecione uma nota fiscal primeiro!');
@@ -218,42 +438,50 @@ function adicionarParcelas() {
         return;
     }
     
-    const nota = notas.find(n => n.id === notaId);
-    if (!nota) return;
-    
     // Calcular valor da parcela
     const valorParcela = valorBoleto / numParcelas;
     
-    if (!boletos[notaId]) boletos[notaId] = [];
-    
-    for (let i = 0; i < numParcelas; i++) {
-        const dataVenc = new Date(dataInicial);
-        dataVenc.setMonth(dataVenc.getMonth() + i);
+    try {
+        for (let i = 0; i < numParcelas; i++) {
+            const dataVenc = new Date(dataInicial);
+            dataVenc.setMonth(dataVenc.getMonth() + i);
+            
+            const boleto = {
+                notaId: notaId,
+                valor: valorParcela,
+                dataVencimento: dataVenc.toISOString().split('T')[0],
+                pago: false,
+                id: Date.now() + i,
+                valorOriginal: valorBoleto,
+                numParcelasTotal: numParcelas,
+                parcelaNumero: i + 1,
+                createdAt: new Date().toISOString()
+            };
+            
+            await salvarBoletoFirebase(boleto);
+        }
         
-        boletos[notaId].push({
-            valor: valorParcela,
-            dataVencimento: dataVenc.toISOString().split('T')[0],
-            pago: false,
-            id: Date.now() + i,
-            valorOriginal: valorBoleto,
-            numParcelasTotal: numParcelas,
-            parcelaNumero: i + 1
-        });
+        // Recarregar dados
+        if (typeof db !== 'undefined') {
+            await carregarDadosFirebase();
+        } else {
+            saveData();
+            renderBoletosAgrupados();
+            renderNotas();
+            atualizarSelectNotas();
+        }
+        
+        // Limpar campos
+        document.getElementById('valorBoleto').value = '';
+        document.getElementById('numParcelas').value = '1';
+        document.getElementById('parcelaData').value = '';
+        document.getElementById('valorParcela').value = 'R$ 0,00';
+        document.getElementById('selectNotaBoleto').value = '';
+        
+        mostrarNotificacao(`${numParcelas} parcela(s) de R$ ${valorParcela.toFixed(2)} adicionada(s) com sucesso!`, 'success');
+    } catch (error) {
+        mostrarNotificacao('Erro ao adicionar parcelas!', 'error');
     }
-    
-    saveData();
-    renderBoletosAgrupados();
-    renderNotas();
-    atualizarSelectNotas();
-    
-    // Limpar campos
-    document.getElementById('valorBoleto').value = '';
-    document.getElementById('numParcelas').value = '1';
-    document.getElementById('parcelaData').value = '';
-    document.getElementById('valorParcela').value = 'R$ 0,00';
-    document.getElementById('selectNotaBoleto').value = '';
-    
-    mostrarNotificacao(`${numParcelas} parcela(s) de R$ ${valorParcela.toFixed(2)} adicionada(s) com sucesso!`, 'success');
 }
 
 function formatarMesAno(dataStr) {
@@ -359,9 +587,9 @@ function renderNotas() {
                                 <td><strong>R$ ${nota.precoTotal}</strong></td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn-edit" onclick="editarNota(${nota.id})">✏️ Editar</button>
-                                        <button class="btn-delete" onclick="excluirNota(${nota.id})">🗑️ Excluir</button>
-                                        <button class="btn-boleto" onclick="verBoletosNota(${nota.id})">🎫 Boletos</button>
+                                        <button class="btn-edit" onclick="editarNota('${nota.firebaseId || nota.id}')">✏️ Editar</button>
+                                        <button class="btn-delete" onclick="excluirNota('${nota.firebaseId || nota.id}')">🗑️ Excluir</button>
+                                        <button class="btn-boleto" onclick="verBoletosNota('${nota.firebaseId || nota.id}')">🎫 Boletos</button>
                                     </div>
                                  </td>
                             </tr>
@@ -385,8 +613,8 @@ window.toggleGrupoMesNota = function(element) {
     conteudo.classList.toggle('collapsed');
 };
 
-// Cadastrar nota
-document.getElementById('notaForm')?.addEventListener('submit', (e) => {
+// Cadastrar nota com Firebase
+document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!verificarPermissao()) return;
     
@@ -404,82 +632,91 @@ document.getElementById('notaForm')?.addEventListener('submit', (e) => {
         quantidade: quantidade,
         unidade: document.getElementById('unidade').value,
         precoUnitario: precoUnitario,
-        precoTotal: calcularTotal(quantidade, precoUnitario)
+        precoTotal: calcularTotal(quantidade, precoUnitario),
+        createdAt: new Date().toISOString()
     };
     
-    notas.push(nota);
-    if (!boletos[nota.id]) boletos[nota.id] = [];
-    
-    saveData();
-    renderNotas();
-    atualizarSelectNotas();
-    e.target.reset();
-    mostrarNotificacao('Nota cadastrada!', 'success');
+    try {
+        await salvarNotaFirebase(nota);
+        
+        if (typeof db !== 'undefined') {
+            await carregarDadosFirebase();
+        } else {
+            notas.push(nota);
+            if (!boletos[nota.id]) boletos[nota.id] = [];
+            saveData();
+            renderNotas();
+            atualizarSelectNotas();
+        }
+        
+        e.target.reset();
+        mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
+    } catch (error) {
+        mostrarNotificacao('Erro ao cadastrar nota!', 'error');
+    }
 });
 
-// Editar nota
-window.editarNota = function(notaId) {
+// Editar nota com Firebase
+window.editarNota = async function(notaId) {
     if (!verificarPermissao()) return;
-    const nota = notas.find(n => n.id === notaId);
+    
+    // Buscar nota pelo firebaseId ou id
+    const nota = notas.find(n => (n.firebaseId === notaId) || (n.id == notaId));
     if (!nota) return;
     
-    const modal = document.getElementById('editNotaModal');
-    const formContainer = document.getElementById('editNotaForm');
+    const novoFornecedor = prompt('Novo fornecedor:', nota.fornecedor);
+    const novoValor = prompt('Novo valor total:', nota.precoTotal);
     
-    formContainer.innerHTML = `
-        <form id="formEditNota" class="modal-form">
-            <div class="form-group"><label>Nº NFe</label><input type="text" id="edit_nfeNumero" value="${nota.nfeNumero}" required></div>
-            <div class="form-group"><label>Data</label><input type="date" id="edit_dataNota" value="${nota.dataNota}" required></div>
-            <div class="form-group"><label>Fornecedor</label><input type="text" id="edit_fornecedor" value="${nota.fornecedor}" required></div>
-            <div class="form-group"><label>Endereço</label><input type="text" id="edit_endereco" value="${nota.endereco || ''}"></div>
-            <div class="form-group"><label>Telefone</label><input type="text" id="edit_telefone" value="${nota.telefone || ''}"></div>
-            <div class="form-group"><label>Produto</label><input type="text" id="edit_descricao" value="${nota.descricao}" required></div>
-            <div class="form-group"><label>Quantidade</label><input type="number" id="edit_quantidade" step="0.01" value="${nota.quantidade}" required></div>
-            <div class="form-group"><label>Unidade</label><select id="edit_unidade"><option value="UN">UN</option><option value="PC">PC</option><option value="KG">KG</option><option value="L">L</option><option value="M">M</option><option value="CX">CX</option></select></div>
-            <div class="form-group"><label>Preço Unitário</label><input type="number" id="edit_precoUnitario" step="0.01" value="${nota.precoUnitario}" required></div>
-            <div class="modal-buttons"><button type="submit" class="btn-save">Salvar</button><button type="button" class="btn-cancel" onclick="fecharModal('editNotaModal')">Cancelar</button></div>
-        </form>
-    `;
-    
-    document.getElementById('edit_unidade').value = nota.unidade;
-    modal.style.display = 'flex';
-    
-    document.getElementById('formEditNota').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const quantidade = parseFloat(document.getElementById('edit_quantidade').value);
-        const precoUnitario = parseFloat(document.getElementById('edit_precoUnitario').value);
-        
-        nota.nfeNumero = document.getElementById('edit_nfeNumero').value;
-        nota.dataNota = document.getElementById('edit_dataNota').value;
-        nota.fornecedor = document.getElementById('edit_fornecedor').value;
-        nota.endereco = document.getElementById('edit_endereco').value;
-        nota.telefone = document.getElementById('edit_telefone').value;
-        nota.descricao = document.getElementById('edit_descricao').value;
-        nota.quantidade = quantidade;
-        nota.unidade = document.getElementById('edit_unidade').value;
-        nota.precoUnitario = precoUnitario;
-        nota.precoTotal = calcularTotal(quantidade, precoUnitario);
-        
-        saveData();
-        renderNotas();
-        atualizarSelectNotas();
-        fecharModal('editNotaModal');
-        mostrarNotificacao('Nota atualizada!', 'success');
-    });
+    if (novoFornecedor && novoValor) {
+        try {
+            await atualizarNotaFirebase(nota.firebaseId || nota.id, {
+                fornecedor: novoFornecedor,
+                precoTotal: parseFloat(novoValor)
+            });
+            
+            if (typeof db !== 'undefined') {
+                await carregarDadosFirebase();
+            } else {
+                nota.fornecedor = novoFornecedor;
+                nota.precoTotal = parseFloat(novoValor);
+                saveData();
+                renderNotas();
+                atualizarSelectNotas();
+            }
+            
+            mostrarNotificacao('Nota atualizada com sucesso!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao atualizar nota!', 'error');
+        }
+    }
 };
 
-// Excluir nota
-window.excluirNota = function(notaId) {
+// Excluir nota com Firebase
+window.excluirNota = async function(notaId) {
     if (!verificarPermissao()) return;
-    const nota = notas.find(n => n.id === notaId);
+    
+    const nota = notas.find(n => (n.firebaseId === notaId) || (n.id == notaId));
+    if (!nota) return;
+    
     if (confirm(`Excluir nota ${nota?.nfeNumero}?`)) {
-        notas = notas.filter(n => n.id !== notaId);
-        delete boletos[notaId];
-        saveData();
-        renderNotas();
-        atualizarSelectNotas();
-        renderBoletosAgrupados();
-        mostrarNotificacao('Nota excluída!', 'success');
+        try {
+            await excluirNotaFirebase(nota.firebaseId || nota.id);
+            
+            if (typeof db !== 'undefined') {
+                await carregarDadosFirebase();
+            } else {
+                notas = notas.filter(n => n.id != notaId && n.firebaseId != notaId);
+                delete boletos[notaId];
+                saveData();
+                renderNotas();
+                atualizarSelectNotas();
+                renderBoletosAgrupados();
+            }
+            
+            mostrarNotificacao('Nota excluída com sucesso!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao excluir nota!', 'error');
+        }
     }
 };
 
@@ -489,10 +726,10 @@ function atualizarSelectNotas() {
     if (!select) return;
     select.innerHTML = '<option value="">-- Selecione uma nota --</option>';
     notas.forEach(nota => {
-        select.innerHTML += `<option value="${nota.id}">${nota.nfeNumero} - ${nota.fornecedor}</option>`;
+        const idValue = nota.firebaseId || nota.id;
+        select.innerHTML += `<option value="${idValue}">${nota.nfeNumero} - ${nota.fornecedor}</option>`;
     });
 }
-
 
 // ========== FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
 function renderBoletosAgrupados() {
@@ -507,11 +744,12 @@ function renderBoletosAgrupados() {
     // Coletar todos os boletos de todas as notas
     let todosBoletos = [];
     notas.forEach(nota => {
-        const boletosNota = boletos[nota.id] || [];
+        const notaId = nota.firebaseId || nota.id;
+        const boletosNota = boletos[notaId] || [];
         boletosNota.forEach(boleto => {
             todosBoletos.push({
                 ...boleto,
-                notaId: nota.id,
+                notaId: notaId,
                 fornecedor: nota.fornecedor,
                 nfeNumero: nota.nfeNumero,
                 valorTotalNota: nota.precoTotal
@@ -621,9 +859,6 @@ function renderBoletosAgrupados() {
                                 statusClass = 'status-pendente';
                             }
                             
-                            const boletosNota = boletos[boleto.notaId] || [];
-                            const indexReal = boletosNota.findIndex(b => b.id === boleto.id);
-                            
                             return `
                                 <tr>
                                     <td><strong>${boleto.fornecedor}</strong></td>
@@ -633,9 +868,9 @@ function renderBoletosAgrupados() {
                                     <td><span class="status-badge ${statusClass}">${status}</span></td>
                                     <td>
                                         <div class="action-buttons">
-                                            ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto(${boleto.notaId}, ${indexReal})">✏️ Editar</button>` : ''}
-                                            ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago(${boleto.notaId}, ${indexReal})">💰 Pagar</button>` : '<span>✅ Pago</span>'}
-                                            <button class="btn-delete" onclick="excluirBoleto(${boleto.notaId}, ${indexReal})">🗑️ Excluir</button>
+                                            ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto('${boleto.firebaseId}')">✏️ Editar</button>` : ''}
+                                            ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago('${boleto.firebaseId}')">💰 Pagar</button>` : '<span>✅ Pago</span>'}
+                                            <button class="btn-delete" onclick="excluirBoleto('${boleto.firebaseId}')">🗑️ Excluir</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -662,44 +897,109 @@ window.toggleGrupoMes = function(element) {
     conteudo.classList.toggle('collapsed');
 };
 
-// ========== FUNÇÕES DE EDIÇÃO DE BOLETOS ==========
-window.editarBoleto = function(notaId, boletoIndex) {
+// ========== FUNÇÕES DE EDIÇÃO DE BOLETOS COM FIREBASE ==========
+window.editarBoleto = async function(boletoId) {
     if (!verificarPermissao()) return;
-    const boleto = boletos[notaId]?.[boletoIndex];
-    if (!boleto) return;
     
-    const novoValor = prompt('Digite o novo valor:', boleto.valor);
-    const novaData = prompt('Digite a nova data (AAAA-MM-DD):', boleto.dataVencimento);
+    // Buscar o boleto pelo firebaseId
+    let boletoEncontrado = null;
+    let notaIdEncontrada = null;
     
-    if (novoValor && !isNaN(novoValor)) boleto.valor = parseFloat(novoValor);
-    if (novaData) boleto.dataVencimento = novaData;
+    for (let notaId in boletos) {
+        const boleto = boletos[notaId].find(b => b.firebaseId === boletoId);
+        if (boleto) {
+            boletoEncontrado = boleto;
+            notaIdEncontrada = notaId;
+            break;
+        }
+    }
     
-    saveData();
-    renderBoletosAgrupados();
-    renderNotas();
+    if (!boletoEncontrado) return;
+    
+    const novoValor = prompt('Digite o novo valor:', boletoEncontrado.valor);
+    const novaData = prompt('Digite a nova data (AAAA-MM-DD):', boletoEncontrado.dataVencimento);
+    
+    if (novoValor && !isNaN(novoValor)) {
+        try {
+            await atualizarBoletoFirebase(boletoId, { valor: parseFloat(novoValor) });
+        } catch (error) {}
+    }
+    
+    if (novaData) {
+        try {
+            await atualizarBoletoFirebase(boletoId, { dataVencimento: novaData });
+        } catch (error) {}
+    }
+    
+    if (typeof db !== 'undefined') {
+        await carregarDadosFirebase();
+    } else {
+        if (novoValor && !isNaN(novoValor)) boletoEncontrado.valor = parseFloat(novoValor);
+        if (novaData) boletoEncontrado.dataVencimento = novaData;
+        saveData();
+        renderBoletosAgrupados();
+        renderNotas();
+    }
+    
     mostrarNotificacao('Boleto atualizado!', 'success');
 };
 
-window.excluirBoleto = function(notaId, boletoIndex) {
+window.excluirBoleto = async function(boletoId) {
     if (!verificarPermissao()) return;
+    
     if (confirm('Excluir este boleto?')) {
-        boletos[notaId].splice(boletoIndex, 1);
-        if (boletos[notaId].length === 0) delete boletos[notaId];
-        saveData();
-        renderBoletosAgrupados();
-        renderNotas();
-        mostrarNotificacao('Boleto excluído!', 'success');
+        try {
+            await excluirBoletoFirebase(boletoId);
+            
+            if (typeof db !== 'undefined') {
+                await carregarDadosFirebase();
+            } else {
+                for (let notaId in boletos) {
+                    const index = boletos[notaId].findIndex(b => b.firebaseId === boletoId);
+                    if (index !== -1) {
+                        boletos[notaId].splice(index, 1);
+                        if (boletos[notaId].length === 0) delete boletos[notaId];
+                        break;
+                    }
+                }
+                saveData();
+                renderBoletosAgrupados();
+                renderNotas();
+            }
+            
+            mostrarNotificacao('Boleto excluído!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao excluir boleto!', 'error');
+        }
     }
 };
 
-window.marcarBoletoPago = function(notaId, boletoIndex) {
+window.marcarBoletoPago = async function(boletoId) {
     if (!verificarPermissao()) return;
+    
     if (confirm('Marcar este boleto como pago?')) {
-        boletos[notaId][boletoIndex].pago = true;
-        saveData();
-        renderBoletosAgrupados();
-        renderNotas();
-        mostrarNotificacao('Boleto pago!', 'success');
+        try {
+            await atualizarBoletoFirebase(boletoId, { pago: true });
+            
+            if (typeof db !== 'undefined') {
+                await carregarDadosFirebase();
+            } else {
+                for (let notaId in boletos) {
+                    const boleto = boletos[notaId].find(b => b.firebaseId === boletoId);
+                    if (boleto) {
+                        boleto.pago = true;
+                        break;
+                    }
+                }
+                saveData();
+                renderBoletosAgrupados();
+                renderNotas();
+            }
+            
+            mostrarNotificacao('Boleto pago!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao marcar boleto como pago!', 'error');
+        }
     }
 };
 
@@ -738,7 +1038,8 @@ document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
     const hoje = new Date();
     const todosBoletos = [];
     notas.forEach(nota => {
-        (boletos[nota.id] || []).forEach(boleto => {
+        const notaId = nota.firebaseId || nota.id;
+        (boletos[notaId] || []).forEach(boleto => {
             const dataVenc = new Date(boleto.dataVencimento);
             const diasDiff = Math.ceil((dataVenc - hoje) / (1000*60*60*24));
             let status = boleto.pago ? 'Pago' : (diasDiff < 0 ? 'Vencido' : (diasDiff <= 3 ? 'Próximo Vencimento' : 'Pendente'));
@@ -777,20 +1078,17 @@ document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
 // ========== CARREGAR VALOR DA NOTA AUTOMATICAMENTE ==========
 function carregarValorNota() {
     const select = document.getElementById('selectNotaBoleto');
-    const notaId = parseInt(select.value);
+    const notaId = select.value;
     const valorBoletoInput = document.getElementById('valorBoleto');
     
     if (notaId) {
-        const nota = notas.find(n => n.id === notaId);
+        const nota = notas.find(n => (n.firebaseId === notaId) || (n.id == notaId));
         if (nota && nota.precoTotal) {
-            // Carregar o valor total da nota no campo Valor do Boleto
             valorBoletoInput.value = parseFloat(nota.precoTotal);
-            // Disparar o cálculo automático da parcela
             calcularValorParcela();
             mostrarNotificacao(`Valor da nota R$ ${parseFloat(nota.precoTotal).toFixed(2)} carregado!`, 'info');
         }
     } else {
-        // Limpar o campo se nenhuma nota for selecionada
         valorBoletoInput.value = '';
         document.getElementById('valorParcela').value = 'R$ 0,00';
     }
@@ -809,7 +1107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adicionarParcelasBtn')?.addEventListener('click', adicionarParcelas);
     document.getElementById('selectMes')?.addEventListener('change', () => renderBoletosAgrupados());
     document.getElementById('selectStatus')?.addEventListener('change', () => renderBoletosAgrupados());
-        // Filtro de mês para notas
     document.getElementById('selectMesNotas')?.addEventListener('change', () => renderNotas());
     
     document.getElementById('boletosPageBtn')?.addEventListener('click', () => {
@@ -818,7 +1115,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBoletosAgrupados();
     });
 
-    // Botão para voltar para página de notas
     const voltarNotasBtn = document.getElementById('voltarNotasBtn');
     if (voltarNotasBtn) {
         voltarNotasBtn.addEventListener('click', () => {
@@ -827,33 +1123,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // ⭐ NOVO: Configurar select de notas com carregamento automático do valor
     const selectNota = document.getElementById('selectNotaBoleto');
     if (selectNota) {
         selectNota.addEventListener('change', (e) => {
-            const notaId = parseInt(e.target.value);
+            const notaId = e.target.value;
             if (notaId) {
-                // Mostrar os containers de boletos
                 const formBoletos = document.getElementById('formBoletos');
                 const listaBoletosContainer = document.getElementById('listaBoletosContainer');
                 if (formBoletos) formBoletos.style.display = 'block';
                 if (listaBoletosContainer) listaBoletosContainer.style.display = 'block';
-                
-                // Renderizar boletos da nota selecionada
-                if (typeof renderizarBoletosPage === 'function') {
-                    renderizarBoletosPage(notaId);
-                }
-                
-                // ⭐ Carregar o valor da nota automaticamente
                 carregarValorNota();
             } else {
-                // Esconder containers quando nenhuma nota for selecionada
                 const formBoletos = document.getElementById('formBoletos');
                 const listaBoletosContainer = document.getElementById('listaBoletosContainer');
                 if (formBoletos) formBoletos.style.display = 'none';
                 if (listaBoletosContainer) listaBoletosContainer.style.display = 'none';
                 
-                // Limpar campos
                 const valorBoletoInput = document.getElementById('valorBoleto');
                 const valorParcelaInput = document.getElementById('valorParcela');
                 const numParcelasInput = document.getElementById('numParcelas');
@@ -865,7 +1150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // ⭐ NOVO: Event listeners para cálculo automático do valor da parcela
     const valorBoletoInput = document.getElementById('valorBoleto');
     const numParcelasInput = document.getElementById('numParcelas');
     

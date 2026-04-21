@@ -497,11 +497,110 @@ body.logged-in .app-container {
 /* Table */
 .table-responsive {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+    margin-bottom: 15px;
+    border-radius: 8px;
 }
 
-.data-table {
+/* Forçar scroll horizontal em todas as tabelas */
+.data-table,
+.tabela-notas-mes,
+.tabela-boletos-mes {
+    min-width: 600px; /* Força scroll horizontal quando necessário */
     width: 100%;
-    border-collapse: collapse;
+}
+
+/* Para telas muito pequenas, aumentar o min-width */
+@media (max-width: 768px) {
+    .data-table,
+    .tabela-notas-mes,
+    .tabela-boletos-mes {
+        min-width: 650px; /* Garante scroll em telas pequenas */
+    }
+    
+    /* Ajustar fonte das tabelas no celular */
+    .data-table td,
+    .data-table th,
+    .tabela-notas-mes td,
+    .tabela-notas-mes th,
+    .tabela-boletos-mes td,
+    .tabela-boletos-mes th {
+        padding: 10px 8px;
+        font-size: 12px;
+        white-space: nowrap; /* Evita quebra de linha */
+    }
+    
+    /* Botões de ação no celular */
+    .action-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 5px;
+        white-space: nowrap;
+    }
+    
+    .action-buttons button {
+        padding: 5px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+}
+
+/* Para telas muito pequenas (menos de 480px) */
+@media (max-width: 480px) {
+    .data-table,
+    .tabela-notas-mes,
+    .tabela-boletos-mes {
+        min-width: 550px;
+    }
+    
+    .data-table td,
+    .data-table th,
+    .tabela-notas-mes td,
+    .tabela-notas-mes th,
+    .tabela-boletos-mes td,
+    .tabela-boletos-mes th {
+        padding: 8px 6px;
+        font-size: 11px;
+    }
+    
+    .action-buttons button {
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+}
+
+/* Garantir que o container principal não limite o scroll */
+.notas-agrupadas,
+.boletos-agrupados {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Cada grupo de mês também deve suportar scroll */
+.grupo-mes,
+.grupo-mes-nota {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Melhorar visualização do scroll no celular */
+::-webkit-scrollbar {
+    height: 5px;
+    width: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }
 
 .data-table thead {

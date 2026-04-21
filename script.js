@@ -558,44 +558,46 @@ function renderNotas() {
                 <span class="toggle-icon-nota">▼</span>
             </div>
             <div class="conteudo-mes-nota">
-                <table class="tabela-notas-mes">
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>NFe</th>
-                            <th>Fornecedor</th>
-                            <th>Produto</th>
-                            <th>Qtd</th>
-                            <th>Preço Unit</th>
-                            <th>Total</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${notasMes.map(nota => `
+                <div class="table-responsive">
+                    <table class="tabela-notas-mes">
+                        <thead>
                             <tr>
-                                <td>${formatarData(nota.dataNota)}</td>
-                                <td><strong>${nota.nfeNumero}</strong></td>
-                                <td>
-                                    <strong>${nota.fornecedor}</strong><br>
-                                    <small>${nota.endereco || '-'}</small><br>
-                                    <small>${nota.telefone || '-'}</small>
-                                 </td>
-                                <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
-                                <td>${nota.quantidade}</td>
-                                <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
-                                <td><strong>R$ ${nota.precoTotal}</strong></td>
-                                <td>
-                                    <div class="action-buttons">
-                                        <button class="btn-edit" onclick="editarNota('${nota.firebaseId || nota.id}')">✏️ Editar</button>
-                                        <button class="btn-delete" onclick="excluirNota('${nota.firebaseId || nota.id}')">🗑️ Excluir</button>
-                                        <button class="btn-boleto" onclick="verBoletosNota('${nota.firebaseId || nota.id}')">🎫 Boletos</button>
-                                    </div>
-                                 </td>
+                                <th>Data</th>
+                                <th>NFe</th>
+                                <th>Fornecedor</th>
+                                <th>Produto</th>
+                                <th>Qtd</th>
+                                <th>Preço Unit</th>
+                                <th>Total</th>
+                                <th>Ações</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${notasMes.map(nota => `
+                                <tr>
+                                    <td>${formatarData(nota.dataNota)}</td>
+                                    <td><strong>${nota.nfeNumero}</strong></td>
+                                    <td>
+                                        <strong>${nota.fornecedor}</strong><br>
+                                        <small>${nota.endereco || '-'}</small><br>
+                                        <small>${nota.telefone || '-'}</small>
+                                     </td>
+                                    <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
+                                    <td>${nota.quantidade}</td>
+                                    <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
+                                    <td><strong>R$ ${nota.precoTotal}</strong></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" onclick="editarNota('${nota.firebaseId || nota.id}')">✏️ Editar</button>
+                                            <button class="btn-delete" onclick="excluirNota('${nota.firebaseId || nota.id}')">🗑️ Excluir</button>
+                                            <button class="btn-boleto" onclick="verBoletosNota('${nota.firebaseId || nota.id}')">🎫 Boletos</button>
+                                        </div>
+                                     </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="resumo-mes-nota">
                     <span>💰 Total do Mês: <span class="total-notas">R$ ${totalMes.toFixed(2)}</span></span>
                     <span>📊 Média por Nota: R$ ${(totalMes / notasMes.length).toFixed(2)}</span>
@@ -730,7 +732,6 @@ function atualizarSelectNotas() {
         select.innerHTML += `<option value="${idValue}">${nota.nfeNumero} - ${nota.fornecedor}</option>`;
     });
 }
-
 // ========== FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
 function renderBoletosAgrupados() {
     const container = document.getElementById('boletosAgrupados');
@@ -835,49 +836,58 @@ function renderBoletosAgrupados() {
                 <span class="toggle-icon">▼</span>
             </div>
             <div class="conteudo-mes">
-                <table class="tabela-boletos-mes">
-                    <thead>
-                        <tr><th>Fornecedor</th><th>NFe</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr>
-                    </thead>
-                    <tbody>
-                        ${boletosMes.map((boleto, idx) => {
-                            const dataVenc = new Date(boleto.dataVencimento);
-                            const diasDiff = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
-                            
-                            let status = '', statusClass = '';
-                            if (boleto.pago) {
-                                status = 'Pago ✅';
-                                statusClass = 'status-pago';
-                            } else if (diasDiff < 0) {
-                                status = 'Vencido ❌';
-                                statusClass = 'status-vencido';
-                            } else if (diasDiff <= 3) {
-                                status = 'Próximo Vencimento ⚠️';
-                                statusClass = 'status-proximo';
-                            } else {
-                                status = 'Pendente 📅';
-                                statusClass = 'status-pendente';
-                            }
-                            
-                            return `
-                                <tr>
-                                    <td><strong>${boleto.fornecedor}</strong></td>
-                                    <td>${boleto.nfeNumero}</td>
-                                    <td>R$ ${boleto.valor.toFixed(2)}</td>
-                                    <td>${formatarData(boleto.dataVencimento)}</td>
-                                    <td><span class="status-badge ${statusClass}">${status}</span></td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto('${boleto.firebaseId}')">✏️ Editar</button>` : ''}
-                                            ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago('${boleto.firebaseId}')">💰 Pagar</button>` : '<span>✅ Pago</span>'}
-                                            <button class="btn-delete" onclick="excluirBoleto('${boleto.firebaseId}')">🗑️ Excluir</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="tabela-boletos-mes">
+                        <thead>
+                            <tr>
+                                <th>Fornecedor</th>
+                                <th>NFe</th>
+                                <th>Valor</th>
+                                <th>Vencimento</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${boletosMes.map((boleto, idx) => {
+                                const dataVenc = new Date(boleto.dataVencimento);
+                                const diasDiff = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+                                
+                                let status = '', statusClass = '';
+                                if (boleto.pago) {
+                                    status = 'Pago ✅';
+                                    statusClass = 'status-pago';
+                                } else if (diasDiff < 0) {
+                                    status = 'Vencido ❌';
+                                    statusClass = 'status-vencido';
+                                } else if (diasDiff <= 3) {
+                                    status = 'Próximo Vencimento ⚠️';
+                                    statusClass = 'status-proximo';
+                                } else {
+                                    status = 'Pendente 📅';
+                                    statusClass = 'status-pendente';
+                                }
+                                
+                                return `
+                                    <tr>
+                                        <td><strong>${boleto.fornecedor}</strong></td>
+                                        <td>${boleto.nfeNumero}</td>
+                                        <td>R$ ${boleto.valor.toFixed(2)}</td>
+                                        <td>${formatarData(boleto.dataVencimento)}</td>
+                                        <td><span class="status-badge ${statusClass}">${status}</span></td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto('${boleto.firebaseId}')">✏️ Editar</button>` : ''}
+                                                ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago('${boleto.firebaseId}')">💰 Pagar</button>` : '<span>✅ Pago</span>'}
+                                                <button class="btn-delete" onclick="excluirBoleto('${boleto.firebaseId}')">🗑️ Excluir</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="resumo-mes">
                     <span>💰 Total Pendente: <span class="total-pendente">R$ ${totalPendente.toFixed(2)}</span></span>
                     <span>⚠️ Próximo Vencimento: <span class="total-proximo">R$ ${totalProximo.toFixed(2)}</span></span>

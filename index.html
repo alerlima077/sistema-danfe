@@ -279,18 +279,40 @@
                     <h2 class="card-title" style="margin-top: 0;">💰 Pagamentos Avulsos (Sangria)</h2>
                 </div>
                 
-                <!-- Formulário para adicionar pagamento -->
+                                <!-- Formulário para adicionar pagamento com múltiplos itens -->
                 <div class="form-sangria">
                     <h3>➕ Registrar Novo Pagamento</h3>
+                    
+                    <!-- Itens do Pagamento -->
+                    <div class="form-group full-width">
+                        <label>Itens do Pagamento *</label>
+                        <div id="itensPagamentoContainer" class="itens-pagamento-container">
+                            <div class="item-pagamento">
+                                <div class="item-pagamento-header">
+                                    <strong>Item 1</strong>
+                                    <button type="button" class="btn-remove-item-pagamento" onclick="removerItemPagamento(this)" style="display: none;">🗑️ Remover</button>
+                                </div>
+                                <div class="item-pagamento-fields">
+                                    <div class="form-group">
+                                        <label>Descrição do Item</label>
+                                        <input type="text" class="item-descricao" placeholder="Ex: Arroz, Feijão, Café" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Valor</label>
+                                        <input type="number" class="item-valor" step="0.001" placeholder="R$ 0,000" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" id="adicionarItemPagamentoBtn" class="btn-secondary" style="margin-top: 10px;">➕ Adicionar outro item</button>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label>Valor Total do Pagamento</label>
+                        <input type="text" id="totalPagamento" readonly disabled style="background: #f1f5f9; font-weight: bold; font-size: 16px;">
+                    </div>
+                    
                     <div class="form-grid">
-                        <div class="form-group">
-                            <label>Descrição *</label>
-                            <input type="text" id="descricaoPagamento" placeholder="Ex: Material de escritório, Café, Transporte" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Valor *</label>
-                            <input type="number" id="valorPagamento" step="0.001" placeholder="R$ 0,000" required>
-                        </div>
                         <div class="form-group">
                             <label>Categoria</label>
                             <select id="categoriaPagamento">
@@ -309,6 +331,7 @@
                             <button id="adicionarPagamentoBtn" class="btn-primary">➕ Registrar Pagamento</button>
                         </div>
                     </div>
+                </div>
                 </div>
 
                 <!-- Filtros -->

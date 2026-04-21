@@ -1451,3 +1451,69 @@ body.logged-in .app-container {
         padding: 6px;
     }
 }
+
+/* ========== ESTILOS PARA ITENS DO PAGAMENTO ========== */
+
+.itens-pagamento-container {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    background: var(--light);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.item-pagamento {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.item-pagamento:last-child {
+    margin-bottom: 0;
+}
+
+.item-pagamento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.item-pagamento-fields {
+    display: grid;
+    grid-template-columns: 1fr 0.8fr;
+    gap: 15px;
+}
+
+.btn-remove-item-pagamento {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-remove-item-pagamento:hover {
+    background: #dc2626;
+}
+
+/* Responsivo para itens do pagamento */
+@media (max-width: 768px) {
+    .item-pagamento-fields {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .item-pagamento-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+}

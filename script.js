@@ -244,7 +244,6 @@ async function excluirPagamentoFirebase(pagamentoId) {
 
 // ========== FUNÇÕES DE RENDERIZAÇÃO DA SANGRIA ==========
 
-// Renderizar pagamentos agrupados
 function renderSangria() {
     const container = document.getElementById('sangriaAgrupada');
     if (!container) return;
@@ -289,8 +288,8 @@ function renderSangria() {
         pagamentosPorDia[diaStr].push(pag);
     });
     
-    // Calcular totais
-    const totalMes = pagamentosFiltrados.reduce((sum, p) => sum + p.valor, 0);
+    // Calcular totais (usando valorTotal se existir, senão usa valor)
+    const totalMes = pagamentosFiltrados.reduce((sum, p) => sum + (p.valorTotal || p.valor), 0);
     const diasUnicos = Object.keys(pagamentosPorDia).length;
     const mediaDia = diasUnicos > 0 ? totalMes / diasUnicos : 0;
     
@@ -305,7 +304,7 @@ function renderSangria() {
     
     diasOrdenados.forEach(dia => {
         const pagamentosDia = pagamentosPorDia[dia];
-        const totalDia = pagamentosDia.reduce((sum, p) => sum + p.valor, 0);
+        const totalDia = pagamentosDia.reduce((sum, p) => sum + (p.valorTotal || p.valor), 0);
         const dataFormatada = formatarDataCompleta(dia);
         
         const grupoDiv = document.createElement('div');
@@ -331,9 +330,14 @@ function renderSangria() {
                             ${pagamentosDia.map(pag => `
                                 <tr>
                                     <td>${formatarHora(pag.dataHora)}</td>
-                                    <td>${pag.descricao}</td>
+                                    <td>
+                                        <div title="${pag.itens ? pag.itens.map(i => `${i.descricao}: R$ ${i.valor.toFixed(3)}`).join('\n') : pag.descricao}">
+                                            <strong>${pag.descricao}</strong>
+                                            ${pag.itens && pag.itens.length > 1 ? `<br><small style="color: #666; cursor: help;">📋 ${pag.itens.length} itens (passe o mouse)</small>` : ''}
+                                        </div>
+                                    </td>
                                     <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></td>
-                                    <td>R$ ${pag.valor.toFixed(3)}</td>
+                                    <td>R$ ${(pag.valorTotal || pag.valor).toFixed(3)}</span></td>
                                     <td><button class="btn-delete-pagamento" onclick="excluirPagamento('${pag.id}')" title="Excluir">🗑️</button></td>
                                 </tr>
                             `).join('')}
@@ -404,22 +408,22 @@ function atualizarSelectMesesSangria() {
     if (mesAtual !== 'todos' && mesesOrdenados.includes(mesAtual)) select.value = mesAtual;
 }
 
-// Adicionar pagamento
+// Adicionar pagamento com múltiplos itens
 async function adicionarPagamento() {
     if (!verificarPermissao()) return;
     
-    const descricao = document.getElementById('descricaoPagamento').value;
-    const valor = parseFloat(document.getElementById('valorPagamento').value);
+    const itens = coletarItensPagamento();
+    const totalPagamento = calcularTotalPagamento();
     const categoria = document.getElementById('categoriaPagamento').value;
     const dataHora = document.getElementById('dataHoraPagamento').value;
     
-    if (!descricao) {
-        alert('Preencha a descrição do pagamento!');
+    if (itens.length === 0) {
+        alert('Adicione pelo menos um item!');
         return;
     }
     
-    if (!valor || valor <= 0) {
-        alert('Preencha o valor corretamente!');
+    if (totalPagamento <= 0) {
+        alert('O valor total deve ser maior que zero!');
         return;
     }
     
@@ -428,10 +432,14 @@ async function adicionarPagamento() {
         return;
     }
     
+    // Criar descrição resumida para exibição na lista
+    const descricaoResumida = itens.map(item => item.descricao).join(', ');
+    
     const pagamento = {
         id: Date.now(),
-        descricao: descricao,
-        valor: valor,
+        itens: itens,
+        descricao: descricaoResumida,
+        valorTotal: totalPagamento,
         categoria: categoria,
         dataHora: dataHora,
         createdAt: new Date().toISOString()
@@ -449,11 +457,15 @@ async function adicionarPagamento() {
         }
         
         // Limpar formulário
-        document.getElementById('descricaoPagamento').value = '';
-        document.getElementById('valorPagamento').value = '';
-        document.getElementById('dataHoraPagamento').value = '';
+        const container = document.getElementById('itensPagamentoContainer');
+        container.innerHTML = '';
+        adicionarItemPagamento(); // Adicionar um item vazio
         
-        mostrarNotificacao('Pagamento registrado com sucesso!', 'success');
+        document.getElementById('categoriaPagamento').value = 'alimentacao';
+        document.getElementById('dataHoraPagamento').value = '';
+        document.getElementById('totalPagamento').value = 'R$ 0,000';
+        
+        mostrarNotificacao(`Pagamento de R$ ${totalPagamento.toFixed(3)} registrado com sucesso!`, 'success');
     } catch (error) {
         mostrarNotificacao('Erro ao registrar pagamento!', 'error');
     }
@@ -834,6 +846,91 @@ function coletarProdutos() {
         }
     });
     return produtos;
+}
+
+// ========== FUNÇÕES PARA MÚLTIPLOS ITENS NO PAGAMENTO ==========
+
+// Calcular subtotal de um item do pagamento
+function calcularSubtotalItemPagamento(itemPagamento) {
+    const valor = parseFloat(itemPagamento.querySelector('.item-valor').value) || 0;
+    return valor;
+}
+
+// Calcular total do pagamento
+function calcularTotalPagamento() {
+    let total = 0;
+    document.querySelectorAll('.item-pagamento').forEach(item => {
+        const valor = parseFloat(item.querySelector('.item-valor').value) || 0;
+        total += valor;
+    });
+    const totalInput = document.getElementById('totalPagamento');
+    if (totalInput) totalInput.value = `R$ ${total.toFixed(3)}`;
+    return total;
+}
+
+// Adicionar novo item ao pagamento
+function adicionarItemPagamento() {
+    const container = document.getElementById('itensPagamentoContainer');
+    const itemCount = document.querySelectorAll('.item-pagamento').length + 1;
+    
+    const novoItem = document.createElement('div');
+    novoItem.className = 'item-pagamento';
+    novoItem.innerHTML = `
+        <div class="item-pagamento-header">
+            <strong>Item ${itemCount}</strong>
+            <button type="button" class="btn-remove-item-pagamento" onclick="removerItemPagamento(this)">🗑️ Remover</button>
+        </div>
+        <div class="item-pagamento-fields">
+            <div class="form-group">
+                <label>Descrição do Item</label>
+                <input type="text" class="item-descricao" placeholder="Ex: Arroz, Feijão, Café" required>
+            </div>
+            <div class="form-group">
+                <label>Valor</label>
+                <input type="number" class="item-valor" step="0.001" placeholder="R$ 0,000" required>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(novoItem);
+    
+    // Adicionar event listener para o novo item
+    const valorInput = novoItem.querySelector('.item-valor');
+    valorInput.addEventListener('input', () => {
+        calcularTotalPagamento();
+    });
+}
+
+// Remover item do pagamento
+function removerItemPagamento(botao) {
+    const itemPagamento = botao.closest('.item-pagamento');
+    if (document.querySelectorAll('.item-pagamento').length > 1) {
+        itemPagamento.remove();
+        // Renumerar itens
+        document.querySelectorAll('.item-pagamento').forEach((item, index) => {
+            item.querySelector('.item-pagamento-header strong').textContent = `Item ${index + 1}`;
+        });
+        calcularTotalPagamento();
+    } else {
+        alert('O pagamento deve ter pelo menos um item!');
+    }
+}
+
+// Coletar itens do pagamento
+function coletarItensPagamento() {
+    const itens = [];
+    document.querySelectorAll('.item-pagamento').forEach(item => {
+        const descricao = item.querySelector('.item-descricao').value;
+        const valor = parseFloat(item.querySelector('.item-valor').value) || 0;
+        
+        if (descricao) {
+            itens.push({
+                descricao: descricao,
+                valor: valor
+            });
+        }
+    });
+    return itens;
 }
 
 // ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS COM INTERVALO PERSONALIZADO ==========

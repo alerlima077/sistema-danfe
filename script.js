@@ -168,6 +168,94 @@ function formatarData(data) {
     return `${dia}/${mes}/${ano}`;
 }
 
+// ========== CÁLCULO AUTOMÁTICO DO VALOR DA PARCELA ==========
+function calcularValorParcela() {
+    const valorBoleto = parseFloat(document.getElementById('valorBoleto').value);
+    const numParcelas = parseInt(document.getElementById('numParcelas').value);
+    const valorParcelaInput = document.getElementById('valorParcela');
+    
+    if (valorBoleto && numParcelas && numParcelas > 0) {
+        const valorParcela = valorBoleto / numParcelas;
+        valorParcelaInput.value = `R$ ${valorParcela.toFixed(2)}`;
+    } else {
+        valorParcelaInput.value = 'R$ 0,00';
+    }
+}
+
+// Event listeners para cálculo automático
+document.getElementById('valorBoleto')?.addEventListener('input', calcularValorParcela);
+document.getElementById('numParcelas')?.addEventListener('input', calcularValorParcela);
+
+// ========== FUNÇÃO ATUALIZADA PARA ADICIONAR PARCELAS ==========
+function adicionarParcelas() {
+    if (!verificarPermissao()) return;
+    
+    const select = document.getElementById('selectNotaBoleto');
+    const notaId = parseInt(select.value);
+    
+    if (!notaId) {
+        alert('Selecione uma nota fiscal primeiro!');
+        return;
+    }
+    
+    const valorBoleto = parseFloat(document.getElementById('valorBoleto').value);
+    const numParcelas = parseInt(document.getElementById('numParcelas').value);
+    const dataInicial = document.getElementById('parcelaData').value;
+    
+    // Validações
+    if (!valorBoleto || valorBoleto <= 0) {
+        alert('Preencha o valor do boleto corretamente!');
+        return;
+    }
+    
+    if (!numParcelas || numParcelas < 1) {
+        alert('Informe o número de parcelas!');
+        return;
+    }
+    
+    if (!dataInicial) {
+        alert('Preencha a data do primeiro vencimento!');
+        return;
+    }
+    
+    const nota = notas.find(n => n.id === notaId);
+    if (!nota) return;
+    
+    // Calcular valor da parcela
+    const valorParcela = valorBoleto / numParcelas;
+    
+    if (!boletos[notaId]) boletos[notaId] = [];
+    
+    for (let i = 0; i < numParcelas; i++) {
+        const dataVenc = new Date(dataInicial);
+        dataVenc.setMonth(dataVenc.getMonth() + i);
+        
+        boletos[notaId].push({
+            valor: valorParcela,
+            dataVencimento: dataVenc.toISOString().split('T')[0],
+            pago: false,
+            id: Date.now() + i,
+            valorOriginal: valorBoleto,
+            numParcelasTotal: numParcelas,
+            parcelaNumero: i + 1
+        });
+    }
+    
+    saveData();
+    renderBoletosAgrupados();
+    renderNotas();
+    atualizarSelectNotas();
+    
+    // Limpar campos
+    document.getElementById('valorBoleto').value = '';
+    document.getElementById('numParcelas').value = '1';
+    document.getElementById('parcelaData').value = '';
+    document.getElementById('valorParcela').value = 'R$ 0,00';
+    document.getElementById('selectNotaBoleto').value = '';
+    
+    mostrarNotificacao(`${numParcelas} parcela(s) de R$ ${valorParcela.toFixed(2)} adicionada(s) com sucesso!`, 'success');
+}
+
 function formatarMesAno(dataStr) {
     if (!dataStr) return '';
     const [ano, mes] = dataStr.split('-');
@@ -200,7 +288,7 @@ function renderNotas() {
                     <button class="btn-delete" onclick="excluirNota(${nota.id})">🗑️ Excluir</button>
                     <button class="btn-boleto" onclick="verBoletosNota(${nota.id})">🎫 Boletos</button>
                 </div>
-             </td>
+              </td>
         </tr>
     `).join('');
 }
@@ -313,7 +401,7 @@ function atualizarSelectNotas() {
     });
 }
 
-// ========== NOVA FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
+// ========== FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
 function renderBoletosAgrupados() {
     const container = document.getElementById('boletosAgrupados');
     if (!container) return;
@@ -418,14 +506,7 @@ function renderBoletosAgrupados() {
             <div class="conteudo-mes">
                 <table class="tabela-boletos-mes">
                     <thead>
-                        <tr>
-                            <th>Fornecedor</th>
-                            <th>NFe</th>
-                            <th>Valor</th>
-                            <th>Vencimento</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
+                        <tr><th>Fornecedor</th><th>NFe</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr>
                     </thead>
                     <tbody>
                         ${boletosMes.map((boleto, idx) => {
@@ -447,7 +528,6 @@ function renderBoletosAgrupados() {
                                 statusClass = 'status-pendente';
                             }
                             
-                            // Encontrar o índice real no array original
                             const boletosNota = boletos[boleto.notaId] || [];
                             const indexReal = boletosNota.findIndex(b => b.id === boleto.id);
                             
@@ -489,61 +569,7 @@ window.toggleGrupoMes = function(element) {
     conteudo.classList.toggle('collapsed');
 };
 
-// Adicionar parcelas (já deve existir no seu script)
-function adicionarParcelas() {
-    if (!verificarPermissao()) return;
-    
-    const select = document.getElementById('selectNotaBoleto');
-    const notaId = parseInt(select.value);
-    
-    if (!notaId) {
-        alert('Selecione uma nota fiscal primeiro!');
-        return;
-    }
-    
-    const valor = parseFloat(document.getElementById('parcelaValor').value);
-    const dataInicial = document.getElementById('parcelaData').value;
-    const numParcelas = parseInt(document.getElementById('numParcelas').value);
-    
-    if (!valor || !dataInicial) {
-        alert('Preencha o valor e a data de vencimento!');
-        return;
-    }
-    
-    const nota = notas.find(n => n.id === notaId);
-    if (!nota) return;
-    
-    if (!boletos[notaId]) boletos[notaId] = [];
-    
-    for (let i = 0; i < numParcelas; i++) {
-        const dataVenc = new Date(dataInicial);
-        dataVenc.setMonth(dataVenc.getMonth() + i);
-        
-        boletos[notaId].push({
-            valor: valor,
-            dataVencimento: dataVenc.toISOString().split('T')[0],
-            pago: false,
-            id: Date.now() + i
-        });
-    }
-    
-    saveData();
-    renderBoletosAgrupados();
-    renderNotas();
-    atualizarSelectNotas();
-    
-    // Limpar campos
-    document.getElementById('parcelaValor').value = '';
-    document.getElementById('parcelaData').value = '';
-    document.getElementById('numParcelas').value = '1';
-    
-    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s) com sucesso!`, 'success');
-}
-
-// Event listener para o botão de adicionar parcelas (já deve existir)
-document.getElementById('adicionarParcelasBtn')?.addEventListener('click', adicionarParcelas);
-
-// Editar boleto
+// ========== FUNÇÕES DE EDIÇÃO DE BOLETOS ==========
 window.editarBoleto = function(notaId, boletoIndex) {
     if (!verificarPermissao()) return;
     const boleto = boletos[notaId]?.[boletoIndex];
@@ -557,10 +583,10 @@ window.editarBoleto = function(notaId, boletoIndex) {
     
     saveData();
     renderBoletosAgrupados();
+    renderNotas();
     mostrarNotificacao('Boleto atualizado!', 'success');
 };
 
-// Excluir boleto
 window.excluirBoleto = function(notaId, boletoIndex) {
     if (!verificarPermissao()) return;
     if (confirm('Excluir este boleto?')) {
@@ -568,11 +594,11 @@ window.excluirBoleto = function(notaId, boletoIndex) {
         if (boletos[notaId].length === 0) delete boletos[notaId];
         saveData();
         renderBoletosAgrupados();
+        renderNotas();
         mostrarNotificacao('Boleto excluído!', 'success');
     }
 };
 
-// Marcar como pago
 window.marcarBoletoPago = function(notaId, boletoIndex) {
     if (!verificarPermissao()) return;
     if (confirm('Marcar este boleto como pago?')) {

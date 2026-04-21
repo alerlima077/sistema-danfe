@@ -489,7 +489,7 @@ window.toggleGrupoMes = function(element) {
     conteudo.classList.toggle('collapsed');
 };
 
-// Adicionar parcelas
+// Adicionar parcelas (já deve existir no seu script)
 function adicionarParcelas() {
     if (!verificarPermissao()) return;
     
@@ -506,7 +506,7 @@ function adicionarParcelas() {
     const numParcelas = parseInt(document.getElementById('numParcelas').value);
     
     if (!valor || !dataInicial) {
-        alert('Preencha valor e data!');
+        alert('Preencha o valor e a data de vencimento!');
         return;
     }
     
@@ -529,10 +529,19 @@ function adicionarParcelas() {
     
     saveData();
     renderBoletosAgrupados();
+    renderNotas();
+    atualizarSelectNotas();
+    
+    // Limpar campos
     document.getElementById('parcelaValor').value = '';
     document.getElementById('parcelaData').value = '';
-    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s)!`, 'success');
+    document.getElementById('numParcelas').value = '1';
+    
+    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s) com sucesso!`, 'success');
 }
+
+// Event listener para o botão de adicionar parcelas (já deve existir)
+document.getElementById('adicionarParcelasBtn')?.addEventListener('click', adicionarParcelas);
 
 // Editar boleto
 window.editarBoleto = function(notaId, boletoIndex) {

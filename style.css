@@ -630,6 +630,173 @@ body.logged-in .app-container {
     font-weight: 600;
 }
 
+/* Filtro de Mês */
+.filtro-mes {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    background: var(--light);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.select-mes, .select-status {
+    min-width: 200px;
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Boletos Agrupados */
+.boletos-agrupados {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.grupo-mes {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
+}
+
+.header-mes {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 15px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.header-mes:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+}
+
+.header-mes h3 {
+    font-size: 18px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-mes .badge-mes {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+.header-mes .toggle-icon {
+    font-size: 20px;
+    transition: transform 0.3s;
+}
+
+.header-mes.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.conteudo-mes {
+    display: block;
+    transition: all 0.3s;
+}
+
+.conteudo-mes.collapsed {
+    display: none;
+}
+
+/* Tabela de Boletos dentro do grupo */
+.tabela-boletos-mes {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabela-boletos-mes th {
+    background: #f1f5f9;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray);
+    font-size: 13px;
+}
+
+.tabela-boletos-mes td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabela-boletos-mes tr:hover {
+    background: var(--light);
+}
+
+/* Resumo do mês */
+.resumo-mes {
+    padding: 10px 20px;
+    background: #f8fafc;
+    font-size: 13px;
+    color: var(--gray);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.resumo-mes span {
+    font-weight: 600;
+}
+
+.resumo-mes .total-pendente {
+    color: var(--warning);
+}
+
+.resumo-mes .total-vencido {
+    color: var(--danger);
+}
+
+.resumo-mes .total-pago {
+    color: var(--success);
+}
+
+/* Sem boletos */
+.sem-boletos {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .filtro-mes {
+        flex-direction: column;
+    }
+    
+    .select-mes, .select-status {
+        width: 100%;
+    }
+    
+    .tabela-boletos-mes {
+        font-size: 12px;
+    }
+    
+    .tabela-boletos-mes th,
+    .tabela-boletos-mes td {
+        padding: 8px;
+    }
+    
+    .header-mes h3 {
+        font-size: 14px;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     body {

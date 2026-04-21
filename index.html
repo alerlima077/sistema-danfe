@@ -161,46 +161,29 @@
             <section class="card">
                 <h2 class="card-title">🎫 Gerenciamento de Boletos</h2>
                 
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label>Selecione a Nota Fiscal</label>
-                    <select id="selectNotaBoleto" class="select-nota">
-                        <option value="">-- Selecione uma nota --</option>
-                    </select>
-                </div>
-
-                <div id="formBoletos" style="display: none;">
-                    <h3 style="margin: 20px 0 15px 0;">➕ Adicionar Parcela(s)</h3>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Valor da Parcela *</label>
-                            <input type="number" id="parcelaValor" step="0.01" placeholder="R$">
-                        </div>
-                        <div class="form-group">
-                            <label>Data do Primeiro Vencimento *</label>
-                            <input type="date" id="parcelaData">
-                        </div>
-                        <div class="form-group">
-                            <label>Número de Parcelas</label>
-                            <input type="number" id="numParcelas" value="1" min="1" max="12">
-                        </div>
-                        <div class="form-group full-width">
-                            <button id="adicionarParcelasBtn" class="btn-primary">➕ Adicionar Parcela(s)</button>
-                        </div>
+                <!-- Filtro por Mês -->
+                <div class="filtro-mes">
+                    <div class="form-group">
+                        <label>📅 Selecione o Mês</label>
+                        <select id="selectMes" class="select-mes">
+                            <option value="todos">-- Todos os meses --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🔍 Status</label>
+                        <select id="selectStatus" class="select-status">
+                            <option value="todos">Todos os status</option>
+                            <option value="pendente">Pendentes</option>
+                            <option value="vencido">Vencidos</option>
+                            <option value="proximo">Próximo vencimento</option>
+                            <option value="pago">Pagos</option>
+                        </select>
                     </div>
                 </div>
 
-                <div id="listaBoletosContainer" style="display: none;">
-                    <h3 style="margin: 30px 0 15px 0;">📋 Boletos Cadastrados</h3>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Fornecedor</th><th>NFe</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Ações</th></tr>
-                            </thead>
-                            <tbody id="boletosTableBody">
-                                <tr><td colspan="6" class="empty-message">Selecione uma nota para ver os boletos</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Lista de Boletos Agrupados por Mês -->
+                <div id="boletosAgrupados" class="boletos-agrupados">
+                    <!-- Os boletos serão renderizados aqui agrupados por mês -->
                 </div>
             </section>
         </main>

@@ -1,16 +1,12 @@
 // ========== SISTEMA DE AUTENTICAÇÃO ==========
-const SENHA_MASTER = 'admin123'; // Mude para a senha desejada
+const SENHA_MASTER = 'nb7214';
 const SESSION_KEY = 'danfe_auth';
-const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas em milissegundos
+const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
-// Dados armazenados
 let notas = [];
 let boletos = {};
 
-// Variáveis para armazenar funções originais
-let funcoesOriginais = {};
-
-// Verificar se já está logado
+// ========== FUNÇÕES DE AUTENTICAÇÃO ==========
 function checkAuth() {
     const authData = localStorage.getItem(SESSION_KEY);
     
@@ -19,14 +15,11 @@ function checkAuth() {
             const { timestamp, authenticated } = JSON.parse(authData);
             const now = new Date().getTime();
             
-            // Verificar se a sessão expirou
             if (authenticated && (now - timestamp) < SESSION_DURATION) {
-                // Sessão válida
                 document.body.classList.remove('logged-out');
                 document.body.classList.add('logged-in');
                 return true;
             } else {
-                // Sessão expirada
                 logout();
                 return false;
             }
@@ -41,7 +34,6 @@ function checkAuth() {
     }
 }
 
-// Login
 function login(senha) {
     if (senha === SENHA_MASTER) {
         const authData = {
@@ -53,61 +45,37 @@ function login(senha) {
         document.body.classList.remove('logged-out');
         document.body.classList.add('logged-in');
         
-        // Esconder overlay de login
         const loginOverlay = document.getElementById('loginOverlay');
-        if (loginOverlay) {
-            loginOverlay.style.display = 'none';
-        }
+        if (loginOverlay) loginOverlay.style.display = 'none';
         
-        // Recarregar dados após login
         loadData();
-        
-        // Mostrar mensagem de boas-vindas
         mostrarNotificacao('Login realizado com sucesso!', 'success');
-        
         return true;
     } else {
         const errorDiv = document.getElementById('loginError');
         if (errorDiv) {
             errorDiv.textContent = '❌ Senha incorreta! Tente novamente.';
             errorDiv.style.display = 'block';
-            
-            // Limpar erro após 3 segundos
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 3000);
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
         }
-        
         return false;
     }
 }
 
-// Logout
 function logout() {
     localStorage.removeItem(SESSION_KEY);
     document.body.classList.add('logged-out');
     document.body.classList.remove('logged-in');
     
-    // Mostrar overlay de login novamente
     const loginOverlay = document.getElementById('loginOverlay');
-    if (loginOverlay) {
-        loginOverlay.style.display = 'flex';
-    }
+    if (loginOverlay) loginOverlay.style.display = 'flex';
     
-    // Limpar formulário de login
     const senhaInput = document.getElementById('senhaAcesso');
     if (senhaInput) senhaInput.value = '';
-    
-    // Limpar dados da tela
-    const notasTableBody = document.getElementById('notasTableBody');
-    if (notasTableBody) {
-        notasTableBody.innerHTML = '<tr><td colspan="8" class="empty-message">Faça login para visualizar os dados</td></tr>';
-    }
     
     mostrarNotificacao('Logout realizado com sucesso!', 'info');
 }
 
-// Mostrar notificação
 function mostrarNotificacao(mensagem, tipo = 'info') {
     let notificacao = document.getElementById('sistemaNotificacao');
     if (!notificacao) {
@@ -118,7 +86,6 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
             top: 20px;
             right: 20px;
             padding: 12px 20px;
-            background: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 10001;
@@ -130,39 +97,21 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
         document.body.appendChild(notificacao);
         
         const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideInRight {
-                from {
-                    opacity: 0;
-                    transform: translateX(100px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateX(0);
-                }
-            }
-        `;
+        style.textContent = `@keyframes slideInRight {
+            from { opacity: 0; transform: translateX(100px); }
+            to { opacity: 1; transform: translateX(0); }
+        }`;
         document.head.appendChild(style);
     }
     
-    const cores = {
-        success: '#10b981',
-        error: '#ef4444',
-        info: '#3b82f6',
-        warning: '#f59e0b'
-    };
-    
+    const cores = { success: '#10b981', error: '#ef4444', info: '#3b82f6', warning: '#f59e0b' };
     notificacao.style.background = cores[tipo] || cores.info;
     notificacao.style.color = 'white';
     notificacao.textContent = mensagem;
     notificacao.style.display = 'block';
-    
-    setTimeout(() => {
-        notificacao.style.display = 'none';
-    }, 3000);
+    setTimeout(() => { notificacao.style.display = 'none'; }, 3000);
 }
 
-// Adicionar botão de logout no header
 function adicionarBotaoLogout() {
     const headerButtons = document.querySelector('.header-buttons');
     if (headerButtons && !document.getElementById('logoutBtn')) {
@@ -170,45 +119,29 @@ function adicionarBotaoLogout() {
         logoutBtn.id = 'logoutBtn';
         logoutBtn.className = 'btn-logout';
         logoutBtn.innerHTML = '🚪 Sair';
-        logoutBtn.onclick = () => {
-            if (confirm('Deseja realmente sair do sistema?')) {
-                logout();
-            }
-        };
+        logoutBtn.onclick = () => { if (confirm('Deseja realmente sair?')) logout(); };
         headerButtons.appendChild(logoutBtn);
     }
 }
 
-// Verificar permissão antes de ações críticas
 function verificarPermissao() {
     const authData = localStorage.getItem(SESSION_KEY);
     if (!authData) {
-        mostrarNotificacao('Você precisa estar logado para fazer isso!', 'warning');
+        mostrarNotificacao('Faça login para continuar!', 'warning');
         return false;
     }
-    
     try {
         const { authenticated, timestamp } = JSON.parse(authData);
-        const now = new Date().getTime();
-        
-        if (!authenticated || (now - timestamp) >= SESSION_DURATION) {
+        if (!authenticated || (new Date().getTime() - timestamp) >= SESSION_DURATION) {
             logout();
-            mostrarNotificacao('Sessão expirada! Faça login novamente.', 'warning');
             return false;
         }
-        
         return true;
-    } catch(e) {
-        return false;
-    }
+    } catch(e) { return false; }
 }
 
-// ========== FUNÇÕES PRINCIPAIS DO SISTEMA ==========
-
-// Carregar dados do localStorage
+// ========== FUNÇÕES PRINCIPAIS ==========
 function loadData() {
-    if (!verificarPermissao()) return;
-    
     const storedNotas = localStorage.getItem('danfe_notas');
     const storedBoletos = localStorage.getItem('danfe_boletos');
     
@@ -217,38 +150,35 @@ function loadData() {
     
     renderNotas();
     atualizarSelectNotas();
-    renderizarBoletosPage();
+    renderBoletosAgrupados();
 }
 
-// Salvar dados
 function saveData() {
-    if (!verificarPermissao()) return;
-    
     localStorage.setItem('danfe_notas', JSON.stringify(notas));
     localStorage.setItem('danfe_boletos', JSON.stringify(boletos));
 }
 
-// Calcular preço total
 function calcularTotal(quantidade, precoUnitario) {
     return (quantidade * precoUnitario).toFixed(2);
 }
 
-// Formatar data
 function formatarData(data) {
     if (!data) return '-';
     const [ano, mes, dia] = data.split('-');
     return `${dia}/${mes}/${ano}`;
 }
 
+function formatarMesAno(dataStr) {
+    if (!dataStr) return '';
+    const [ano, mes] = dataStr.split('-');
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${meses[parseInt(mes)-1]} ${ano}`;
+}
+
 // Renderizar notas na tabela
 function renderNotas() {
     const tbody = document.getElementById('notasTableBody');
     if (!tbody) return;
-    
-    if (!verificarPermissao()) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Faça login para visualizar as notas</td></tr>';
-        return;
-    }
     
     if (notas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Nenhuma nota cadastrada</td></tr>';
@@ -259,11 +189,7 @@ function renderNotas() {
         <tr>
             <td>${formatarData(nota.dataNota)}</td>
             <td><strong>${nota.nfeNumero}</strong></td>
-            <td>
-                <strong>${nota.fornecedor}</strong><br>
-                <small>${nota.endereco || '-'}</small><br>
-                <small>${nota.telefone || '-'}</small>
-            </td>
+            <td><strong>${nota.fornecedor}</strong><br><small>${nota.endereco || '-'}</small><br><small>${nota.telefone || '-'}</small></td>
             <td>${nota.descricao}<br><small>${nota.unidade}</small></td>
             <td>${nota.quantidade}</td>
             <td>R$ ${nota.precoUnitario.toFixed(2)}</td>
@@ -274,15 +200,14 @@ function renderNotas() {
                     <button class="btn-delete" onclick="excluirNota(${nota.id})">🗑️ Excluir</button>
                     <button class="btn-boleto" onclick="verBoletosNota(${nota.id})">🎫 Boletos</button>
                 </div>
-            </td>
+             </td>
         </tr>
     `).join('');
 }
 
 // Cadastrar nota
-function cadastrarNota(e) {
+document.getElementById('notaForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    
     if (!verificarPermissao()) return;
     
     const quantidade = parseFloat(document.getElementById('quantidade').value);
@@ -303,22 +228,18 @@ function cadastrarNota(e) {
     };
     
     notas.push(nota);
-    
-    if (!boletos[nota.id]) {
-        boletos[nota.id] = [];
-    }
+    if (!boletos[nota.id]) boletos[nota.id] = [];
     
     saveData();
     renderNotas();
     atualizarSelectNotas();
     e.target.reset();
-    mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
-}
+    mostrarNotificacao('Nota cadastrada!', 'success');
+});
 
 // Editar nota
 window.editarNota = function(notaId) {
     if (!verificarPermissao()) return;
-    
     const nota = notas.find(n => n.id === notaId);
     if (!nota) return;
     
@@ -327,61 +248,24 @@ window.editarNota = function(notaId) {
     
     formContainer.innerHTML = `
         <form id="formEditNota" class="modal-form">
-            <div class="form-group">
-                <label>Nº NFe *</label>
-                <input type="text" id="edit_nfeNumero" value="${nota.nfeNumero}" required>
-            </div>
-            <div class="form-group">
-                <label>Data da Nota *</label>
-                <input type="date" id="edit_dataNota" value="${nota.dataNota}" required>
-            </div>
-            <div class="form-group">
-                <label>Fornecedor *</label>
-                <input type="text" id="edit_fornecedor" value="${nota.fornecedor}" required>
-            </div>
-            <div class="form-group">
-                <label>Endereço</label>
-                <input type="text" id="edit_endereco" value="${nota.endereco || ''}">
-            </div>
-            <div class="form-group">
-                <label>Telefone</label>
-                <input type="text" id="edit_telefone" value="${nota.telefone || ''}">
-            </div>
-            <div class="form-group">
-                <label>Descrição do Produto *</label>
-                <input type="text" id="edit_descricao" value="${nota.descricao}" required>
-            </div>
-            <div class="form-group">
-                <label>Quantidade *</label>
-                <input type="number" id="edit_quantidade" step="0.01" value="${nota.quantidade}" required>
-            </div>
-            <div class="form-group">
-                <label>Unidade</label>
-                <select id="edit_unidade">
-                    <option value="UN" ${nota.unidade === 'UN' ? 'selected' : ''}>UN</option>
-                    <option value="PC" ${nota.unidade === 'PC' ? 'selected' : ''}>PC</option>
-                    <option value="KG" ${nota.unidade === 'KG' ? 'selected' : ''}>KG</option>
-                    <option value="L" ${nota.unidade === 'L' ? 'selected' : ''}>L</option>
-                    <option value="M" ${nota.unidade === 'M' ? 'selected' : ''}>M</option>
-                    <option value="CX" ${nota.unidade === 'CX' ? 'selected' : ''}>CX</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Preço Unitário *</label>
-                <input type="number" id="edit_precoUnitario" step="0.01" value="${nota.precoUnitario}" required>
-            </div>
-            <div class="modal-buttons">
-                <button type="submit" class="btn-save">💾 Salvar</button>
-                <button type="button" class="btn-cancel" onclick="fecharModal('editNotaModal')">Cancelar</button>
-            </div>
+            <div class="form-group"><label>Nº NFe</label><input type="text" id="edit_nfeNumero" value="${nota.nfeNumero}" required></div>
+            <div class="form-group"><label>Data</label><input type="date" id="edit_dataNota" value="${nota.dataNota}" required></div>
+            <div class="form-group"><label>Fornecedor</label><input type="text" id="edit_fornecedor" value="${nota.fornecedor}" required></div>
+            <div class="form-group"><label>Endereço</label><input type="text" id="edit_endereco" value="${nota.endereco || ''}"></div>
+            <div class="form-group"><label>Telefone</label><input type="text" id="edit_telefone" value="${nota.telefone || ''}"></div>
+            <div class="form-group"><label>Produto</label><input type="text" id="edit_descricao" value="${nota.descricao}" required></div>
+            <div class="form-group"><label>Quantidade</label><input type="number" id="edit_quantidade" step="0.01" value="${nota.quantidade}" required></div>
+            <div class="form-group"><label>Unidade</label><select id="edit_unidade"><option value="UN">UN</option><option value="PC">PC</option><option value="KG">KG</option><option value="L">L</option><option value="M">M</option><option value="CX">CX</option></select></div>
+            <div class="form-group"><label>Preço Unitário</label><input type="number" id="edit_precoUnitario" step="0.01" value="${nota.precoUnitario}" required></div>
+            <div class="modal-buttons"><button type="submit" class="btn-save">Salvar</button><button type="button" class="btn-cancel" onclick="fecharModal('editNotaModal')">Cancelar</button></div>
         </form>
     `;
     
+    document.getElementById('edit_unidade').value = nota.unidade;
     modal.style.display = 'flex';
     
     document.getElementById('formEditNota').addEventListener('submit', (e) => {
         e.preventDefault();
-        
         const quantidade = parseFloat(document.getElementById('edit_quantidade').value);
         const precoUnitario = parseFloat(document.getElementById('edit_precoUnitario').value);
         
@@ -400,197 +284,209 @@ window.editarNota = function(notaId) {
         renderNotas();
         atualizarSelectNotas();
         fecharModal('editNotaModal');
-        mostrarNotificacao('Nota atualizada com sucesso!', 'success');
+        mostrarNotificacao('Nota atualizada!', 'success');
     });
 };
 
 // Excluir nota
 window.excluirNota = function(notaId) {
     if (!verificarPermissao()) return;
-    
     const nota = notas.find(n => n.id === notaId);
-    if (!nota) return;
-    
-    if (confirm(`Tem certeza que deseja excluir a nota ${nota.nfeNumero} - ${nota.fornecedor}?\n\nTodos os boletos relacionados também serão excluídos!`)) {
+    if (confirm(`Excluir nota ${nota?.nfeNumero}?`)) {
         notas = notas.filter(n => n.id !== notaId);
         delete boletos[notaId];
         saveData();
         renderNotas();
         atualizarSelectNotas();
-        renderizarBoletosPage();
-        mostrarNotificacao('Nota excluída com sucesso!', 'success');
+        renderBoletosAgrupados();
+        mostrarNotificacao('Nota excluída!', 'success');
     }
 };
 
-// Atualizar select de notas
+// Atualizar select
 function atualizarSelectNotas() {
     const select = document.getElementById('selectNotaBoleto');
     if (!select) return;
-    
     select.innerHTML = '<option value="">-- Selecione uma nota --</option>';
-    
     notas.forEach(nota => {
-        const option = document.createElement('option');
-        option.value = nota.id;
-        option.textContent = `${nota.nfeNumero} - ${nota.fornecedor} (R$ ${nota.precoTotal})`;
-        select.appendChild(option);
+        select.innerHTML += `<option value="${nota.id}">${nota.nfeNumero} - ${nota.fornecedor}</option>`;
     });
 }
 
-// Renderizar boletos
-function renderizarBoletosPage(notaId = null) {
-    if (!verificarPermissao()) return;
+// ========== NOVA FUNÇÃO: RENDERIZAR BOLETOS AGRUPADOS POR MÊS ==========
+function renderBoletosAgrupados() {
+    const container = document.getElementById('boletosAgrupados');
+    if (!container) return;
     
-    if (!notaId) {
-        const select = document.getElementById('selectNotaBoleto');
-        if (select) notaId = parseInt(select.value);
-        if (!notaId) return;
-    }
-    
-    const nota = notas.find(n => n.id === notaId);
-    if (!nota) return;
-    
-    const boletosNota = boletos[notaId] || [];
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    
-    const tbody = document.getElementById('boletosTableBody');
-    if (!tbody) return;
-    
-    if (boletosNota.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-message">Nenhum boleto cadastrado para esta nota</td></tr>';
+    if (!verificarPermissao()) {
+        container.innerHTML = '<div class="sem-boletos">Faça login para visualizar os boletos</div>';
         return;
     }
     
-    tbody.innerHTML = boletosNota.map((boleto, index) => {
-        const dataVenc = new Date(boleto.dataVencimento);
-        const diasDiff = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+    // Coletar todos os boletos de todas as notas
+    let todosBoletos = [];
+    notas.forEach(nota => {
+        const boletosNota = boletos[nota.id] || [];
+        boletosNota.forEach(boleto => {
+            todosBoletos.push({
+                ...boleto,
+                notaId: nota.id,
+                fornecedor: nota.fornecedor,
+                nfeNumero: nota.nfeNumero,
+                valorTotalNota: nota.precoTotal
+            });
+        });
+    });
+    
+    // Ordenar por data de vencimento (mais antigo primeiro)
+    todosBoletos.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+    
+    // Agrupar por mês/ano
+    const boletosPorMes = {};
+    todosBoletos.forEach(boleto => {
+        const data = new Date(boleto.dataVencimento);
+        const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+        if (!boletosPorMes[mesAno]) boletosPorMes[mesAno] = [];
+        boletosPorMes[mesAno].push(boleto);
+    });
+    
+    // Ordenar meses
+    const mesesOrdenados = Object.keys(boletosPorMes).sort();
+    
+    // Preencher select de meses
+    const selectMes = document.getElementById('selectMes');
+    if (selectMes) {
+        const mesAtual = selectMes.value;
+        selectMes.innerHTML = '<option value="todos">-- Todos os meses --</option>';
+        mesesOrdenados.forEach(mes => {
+            selectMes.innerHTML += `<option value="${mes}">${formatarMesAno(mes)}</option>`;
+        });
+        if (mesAtual !== 'todos' && mesesOrdenados.includes(mesAtual)) selectMes.value = mesAtual;
+    }
+    
+    // Filtrar por mês e status
+    const mesFiltro = document.getElementById('selectMes')?.value || 'todos';
+    const statusFiltro = document.getElementById('selectStatus')?.value || 'todos';
+    
+    const mesesParaMostrar = mesFiltro === 'todos' ? mesesOrdenados : [mesFiltro];
+    
+    if (mesesParaMostrar.length === 0 || todosBoletos.length === 0) {
+        container.innerHTML = '<div class="sem-boletos">📭 Nenhum boleto cadastrado</div>';
+        return;
+    }
+    
+    // Renderizar grupos
+    container.innerHTML = '';
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    mesesParaMostrar.forEach(mes => {
+        let boletosMes = boletosPorMes[mes] || [];
         
-        let status = '';
-        let statusClass = '';
-        
-        if (boleto.pago) {
-            status = 'Pago ✅';
-            statusClass = 'status-pago';
-        } else if (diasDiff < 0) {
-            status = 'Vencido ❌';
-            statusClass = 'status-vencido';
-        } else if (diasDiff <= 3) {
-            status = 'Próximo ao Vencimento ⚠️';
-            statusClass = 'status-proximo';
-        } else {
-            status = 'Pendente 📅';
-            statusClass = 'status-pendente';
+        // Filtrar por status
+        if (statusFiltro !== 'todos') {
+            boletosMes = boletosMes.filter(boleto => {
+                const dataVenc = new Date(boleto.dataVencimento);
+                const diasDiff = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+                
+                if (statusFiltro === 'pago') return boleto.pago === true;
+                if (statusFiltro === 'pendente') return !boleto.pago && diasDiff > 3;
+                if (statusFiltro === 'vencido') return !boleto.pago && diasDiff < 0;
+                if (statusFiltro === 'proximo') return !boleto.pago && diasDiff >= 0 && diasDiff <= 3;
+                return true;
+            });
         }
         
-        return `
-            <tr>
-                <td><strong>${nota.fornecedor}</strong></td>
-                <td>${nota.nfeNumero}</td>
-                <td>R$ ${parseFloat(boleto.valor).toFixed(2)}</td>
-                <td>${formatarData(boleto.dataVencimento)}</td>
-                <td><span class="status-badge ${statusClass}">${status}</span></td>
-                <td>
-                    <div class="action-buttons">
-                        ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto(${notaId}, ${index})">✏️ Editar</button>` : ''}
-                        ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago(${notaId}, ${index})">💰 Pagar</button>` : '<span>✅ Pago</span>'}
-                        <button class="btn-delete" onclick="excluirBoleto(${notaId}, ${index})">🗑️ Excluir</button>
-                    </div>
-                </td>
-            </tr>
+        if (boletosMes.length === 0) return;
+        
+        // Estatísticas do mês
+        const totalPendente = boletosMes.filter(b => !b.pago && new Date(b.dataVencimento) >= hoje && (new Date(b.dataVencimento) - hoje) / (1000*60*60*24) > 3).reduce((s, b) => s + b.valor, 0);
+        const totalProximo = boletosMes.filter(b => !b.pago && (new Date(b.dataVencimento) - hoje) / (1000*60*60*24) <= 3 && (new Date(b.dataVencimento) - hoje) / (1000*60*60*24) >= 0).reduce((s, b) => s + b.valor, 0);
+        const totalVencido = boletosMes.filter(b => !b.pago && new Date(b.dataVencimento) < hoje).reduce((s, b) => s + b.valor, 0);
+        const totalPago = boletosMes.filter(b => b.pago).reduce((s, b) => s + b.valor, 0);
+        
+        const grupoDiv = document.createElement('div');
+        grupoDiv.className = 'grupo-mes';
+        grupoDiv.innerHTML = `
+            <div class="header-mes" onclick="toggleGrupoMes(this)">
+                <h3>
+                    📅 ${formatarMesAno(mes)}
+                    <span class="badge-mes">${boletosMes.length} boletos</span>
+                </h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="conteudo-mes">
+                <table class="tabela-boletos-mes">
+                    <thead>
+                        <tr>
+                            <th>Fornecedor</th>
+                            <th>NFe</th>
+                            <th>Valor</th>
+                            <th>Vencimento</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${boletosMes.map((boleto, idx) => {
+                            const dataVenc = new Date(boleto.dataVencimento);
+                            const diasDiff = Math.ceil((dataVenc - hoje) / (1000 * 60 * 60 * 24));
+                            
+                            let status = '', statusClass = '';
+                            if (boleto.pago) {
+                                status = 'Pago ✅';
+                                statusClass = 'status-pago';
+                            } else if (diasDiff < 0) {
+                                status = 'Vencido ❌';
+                                statusClass = 'status-vencido';
+                            } else if (diasDiff <= 3) {
+                                status = 'Próximo Vencimento ⚠️';
+                                statusClass = 'status-proximo';
+                            } else {
+                                status = 'Pendente 📅';
+                                statusClass = 'status-pendente';
+                            }
+                            
+                            // Encontrar o índice real no array original
+                            const boletosNota = boletos[boleto.notaId] || [];
+                            const indexReal = boletosNota.findIndex(b => b.id === boleto.id);
+                            
+                            return `
+                                <tr>
+                                    <td><strong>${boleto.fornecedor}</strong></td>
+                                    <td>${boleto.nfeNumero}</td>
+                                    <td>R$ ${boleto.valor.toFixed(2)}</td>
+                                    <td>${formatarData(boleto.dataVencimento)}</td>
+                                    <td><span class="status-badge ${statusClass}">${status}</span></td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            ${!boleto.pago ? `<button class="btn-edit" onclick="editarBoleto(${boleto.notaId}, ${indexReal})">✏️ Editar</button>` : ''}
+                                            ${!boleto.pago ? `<button class="btn-success" onclick="marcarBoletoPago(${boleto.notaId}, ${indexReal})">💰 Pagar</button>` : '<span>✅ Pago</span>'}
+                                            <button class="btn-delete" onclick="excluirBoleto(${boleto.notaId}, ${indexReal})">🗑️ Excluir</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+                <div class="resumo-mes">
+                    <span>💰 Total Pendente: <span class="total-pendente">R$ ${totalPendente.toFixed(2)}</span></span>
+                    <span>⚠️ Próximo Vencimento: <span class="total-proximo">R$ ${totalProximo.toFixed(2)}</span></span>
+                    <span>❌ Vencido: <span class="total-vencido">R$ ${totalVencido.toFixed(2)}</span></span>
+                    <span>✅ Pago: <span class="total-pago">R$ ${totalPago.toFixed(2)}</span></span>
+                </div>
+            </div>
         `;
-    }).join('');
+        container.appendChild(grupoDiv);
+    });
 }
 
-// Editar boleto
-window.editarBoleto = function(notaId, boletoIndex) {
-    if (!verificarPermissao()) return;
-    
-    const boleto = boletos[notaId][boletoIndex];
-    if (!boleto) return;
-    
-    const modal = document.getElementById('editBoletoModal');
-    const formContainer = document.getElementById('editBoletoForm');
-    
-    formContainer.innerHTML = `
-        <form id="formEditBoleto" class="modal-form">
-            <div class="form-group">
-                <label>Valor do Boleto *</label>
-                <input type="number" id="edit_valor" step="0.01" value="${boleto.valor}" required>
-            </div>
-            <div class="form-group">
-                <label>Data de Vencimento *</label>
-                <input type="date" id="edit_dataVencimento" value="${boleto.dataVencimento}" required>
-            </div>
-            <div class="modal-buttons">
-                <button type="submit" class="btn-save">💾 Salvar</button>
-                <button type="button" class="btn-cancel" onclick="fecharModal('editBoletoModal')">Cancelar</button>
-            </div>
-        </form>
-    `;
-    
-    modal.style.display = 'flex';
-    
-    document.getElementById('formEditBoleto').addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        boleto.valor = parseFloat(document.getElementById('edit_valor').value);
-        boleto.dataVencimento = document.getElementById('edit_dataVencimento').value;
-        
-        saveData();
-        renderizarBoletosPage(notaId);
-        fecharModal('editBoletoModal');
-        mostrarNotificacao('Boleto atualizado com sucesso!', 'success');
-    });
-};
-
-// Excluir boleto
-window.excluirBoleto = function(notaId, boletoIndex) {
-    if (!verificarPermissao()) return;
-    
-    if (confirm('Tem certeza que deseja excluir este boleto?')) {
-        boletos[notaId].splice(boletoIndex, 1);
-        if (boletos[notaId].length === 0) {
-            delete boletos[notaId];
-        }
-        saveData();
-        renderizarBoletosPage(notaId);
-        mostrarNotificacao('Boleto excluído com sucesso!', 'success');
-    }
-};
-
-// Marcar boleto como pago
-window.marcarBoletoPago = function(notaId, boletoIndex) {
-    if (!verificarPermissao()) return;
-    
-    if (confirm('Confirmar pagamento deste boleto?')) {
-        boletos[notaId][boletoIndex].pago = true;
-        saveData();
-        renderizarBoletosPage(notaId);
-        renderNotas();
-        mostrarNotificacao('Boleto marcado como pago!', 'success');
-    }
-};
-
-// Ver boletos de uma nota
-window.verBoletosNota = function(notaId) {
-    if (!verificarPermissao()) return;
-    
-    document.getElementById('notasPage').style.display = 'none';
-    document.getElementById('boletosPage').style.display = 'block';
-    
-    const select = document.getElementById('selectNotaBoleto');
-    select.value = notaId;
-    
-    const event = new Event('change');
-    select.dispatchEvent(event);
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-// Fechar modal
-window.fecharModal = function(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+// Alternar expansão do grupo
+window.toggleGrupoMes = function(element) {
+    element.classList.toggle('collapsed');
+    const conteudo = element.nextElementSibling;
+    conteudo.classList.toggle('collapsed');
 };
 
 // Adicionar parcelas
@@ -610,21 +506,12 @@ function adicionarParcelas() {
     const numParcelas = parseInt(document.getElementById('numParcelas').value);
     
     if (!valor || !dataInicial) {
-        alert('Preencha o valor e a data de vencimento!');
+        alert('Preencha valor e data!');
         return;
     }
     
     const nota = notas.find(n => n.id === notaId);
     if (!nota) return;
-    
-    const valorTotalNota = parseFloat(nota.precoTotal);
-    const valorParcelas = valor * numParcelas;
-    
-    if (Math.abs(valorParcelas - valorTotalNota) > 0.01) {
-        if (!confirm(`⚠️ Atenção! A soma das parcelas (R$ ${valorParcelas.toFixed(2)}) é diferente do valor total da nota (R$ ${valorTotalNota.toFixed(2)}).\n\nDeseja continuar mesmo assim?`)) {
-            return;
-        }
-    }
     
     if (!boletos[notaId]) boletos[notaId] = [];
     
@@ -641,187 +528,149 @@ function adicionarParcelas() {
     }
     
     saveData();
-    renderizarBoletosPage(notaId);
-    
+    renderBoletosAgrupados();
     document.getElementById('parcelaValor').value = '';
     document.getElementById('parcelaData').value = '';
-    document.getElementById('numParcelas').value = '1';
-    
-    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s) com sucesso!`, 'success');
+    mostrarNotificacao(`${numParcelas} parcela(s) adicionada(s)!`, 'success');
 }
 
-// Exportar para Excel
-function exportarExcel() {
+// Editar boleto
+window.editarBoleto = function(notaId, boletoIndex) {
     if (!verificarPermissao()) return;
+    const boleto = boletos[notaId]?.[boletoIndex];
+    if (!boleto) return;
     
+    const novoValor = prompt('Digite o novo valor:', boleto.valor);
+    const novaData = prompt('Digite a nova data (AAAA-MM-DD):', boleto.dataVencimento);
+    
+    if (novoValor && !isNaN(novoValor)) boleto.valor = parseFloat(novoValor);
+    if (novaData) boleto.dataVencimento = novaData;
+    
+    saveData();
+    renderBoletosAgrupados();
+    mostrarNotificacao('Boleto atualizado!', 'success');
+};
+
+// Excluir boleto
+window.excluirBoleto = function(notaId, boletoIndex) {
+    if (!verificarPermissao()) return;
+    if (confirm('Excluir este boleto?')) {
+        boletos[notaId].splice(boletoIndex, 1);
+        if (boletos[notaId].length === 0) delete boletos[notaId];
+        saveData();
+        renderBoletosAgrupados();
+        mostrarNotificacao('Boleto excluído!', 'success');
+    }
+};
+
+// Marcar como pago
+window.marcarBoletoPago = function(notaId, boletoIndex) {
+    if (!verificarPermissao()) return;
+    if (confirm('Marcar este boleto como pago?')) {
+        boletos[notaId][boletoIndex].pago = true;
+        saveData();
+        renderBoletosAgrupados();
+        renderNotas();
+        mostrarNotificacao('Boleto pago!', 'success');
+    }
+};
+
+// Ver boletos de uma nota
+window.verBoletosNota = function(notaId) {
+    document.getElementById('notasPage').style.display = 'none';
+    document.getElementById('boletosPage').style.display = 'block';
+    renderBoletosAgrupados();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Fechar modal
+window.fecharModal = function(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+};
+
+// Exportar Excel
+document.getElementById('exportExcelBtn')?.addEventListener('click', () => {
     let dadosExcel = [];
-    
-    dadosExcel.push(['SISTEMA DANFE - RELATÓRIO COMPLETO', '', '', '', '', '', '']);
-    dadosExcel.push(['Data:', new Date().toLocaleDateString('pt-BR'), '', '', '', '', '']);
-    dadosExcel.push(['', '', '', '', '', '', '']);
-    dadosExcel.push(['NOTAS FISCAIS CADASTRADAS', '', '', '', '', '', '']);
-    dadosExcel.push(['Data', 'NFe', 'Fornecedor', 'Endereço', 'Telefone', 'Produto', 'Quantidade', 'Valor Total']);
+    dadosExcel.push(['SISTEMA DANFE - RELATÓRIO', '', '']);
+    dadosExcel.push(['Data:', new Date().toLocaleDateString('pt-BR'), '']);
+    dadosExcel.push(['', '', '']);
+    dadosExcel.push(['NOTAS FISCAIS', '', '']);
+    dadosExcel.push(['Data', 'NFe', 'Fornecedor', 'Produto', 'Quantidade', 'Valor Total']);
     
     notas.forEach(nota => {
         dadosExcel.push([
-            formatarData(nota.dataNota),
-            nota.nfeNumero,
-            nota.fornecedor,
-            nota.endereco || '',
-            nota.telefone || '',
-            `${nota.descricao} (${nota.unidade})`,
-            nota.quantidade,
-            `R$ ${nota.precoTotal}`
+            formatarData(nota.dataNota), nota.nfeNumero, nota.fornecedor,
+            `${nota.descricao} (${nota.unidade})`, nota.quantidade, `R$ ${nota.precoTotal}`
         ]);
     });
     
-    dadosExcel.push(['', '', '', '', '', '', '', '']);
-    dadosExcel.push(['BOLETOS', '', '', '', '', '', '', '']);
-    dadosExcel.push(['Fornecedor', 'NFe', 'Valor Boleto', 'Vencimento', 'Status', 'Data Pagamento', '', '']);
+    dadosExcel.push(['', '', '', '', '', '']);
+    dadosExcel.push(['BOLETOS POR MÊS', '', '', '', '', '']);
     
+    const hoje = new Date();
+    const todosBoletos = [];
     notas.forEach(nota => {
-        const boletosNota = boletos[nota.id] || [];
-        boletosNota.forEach(boleto => {
-            const hoje = new Date();
-            const venc = new Date(boleto.dataVencimento);
-            let status = boleto.pago ? 'Pago' : 'Pendente';
-            
-            if (!boleto.pago) {
-                const diasDiff = Math.ceil((venc - hoje) / (1000*60*60*24));
-                if (diasDiff < 0) status = 'Vencido';
-                else if (diasDiff <= 3) status = 'Próximo Vencimento';
-            }
-            
-            dadosExcel.push([
-                nota.fornecedor,
-                nota.nfeNumero,
-                `R$ ${parseFloat(boleto.valor).toFixed(2)}`,
-                formatarData(boleto.dataVencimento),
-                status,
-                boleto.pago ? formatarData(new Date().toISOString().split('T')[0]) : '-'
-            ]);
+        (boletos[nota.id] || []).forEach(boleto => {
+            const dataVenc = new Date(boleto.dataVencimento);
+            const diasDiff = Math.ceil((dataVenc - hoje) / (1000*60*60*24));
+            let status = boleto.pago ? 'Pago' : (diasDiff < 0 ? 'Vencido' : (diasDiff <= 3 ? 'Próximo Vencimento' : 'Pendente'));
+            todosBoletos.push({
+                mes: `${dataVenc.getFullYear()}-${String(dataVenc.getMonth()+1).padStart(2,'0')}`,
+                fornecedor: nota.fornecedor,
+                nfe: nota.nfeNumero,
+                valor: boleto.valor,
+                vencimento: formatarData(boleto.dataVencimento),
+                status: status
+            });
         });
     });
     
-    const csv = dadosExcel.map(row => 
-        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-    ).join('\n');
+    todosBoletos.sort((a,b) => a.mes.localeCompare(b.mes));
+    let mesAtual = '';
+    todosBoletos.forEach(b => {
+        if (b.mes !== mesAtual) {
+            mesAtual = b.mes;
+            dadosExcel.push([`📅 ${formatarMesAno(mesAtual)}`, '', '', '', '', '']);
+            dadosExcel.push(['Fornecedor', 'NFe', 'Valor', 'Vencimento', 'Status', '']);
+        }
+        dadosExcel.push([b.fornecedor, b.nfe, `R$ ${b.valor.toFixed(2)}`, b.vencimento, b.status, '']);
+    });
     
+    const csv = dadosExcel.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `danfe_completo_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `danfe_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    mostrarNotificacao('Relatório exportado com sucesso!', 'success');
-}
+    URL.revokeObjectURL(link.href);
+    mostrarNotificacao('Relatório exportado!', 'success');
+});
 
-// ========== EVENT LISTENERS E INICIALIZAÇÃO ==========
-
-// Aguardar DOM carregar completamente
+// Event listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Configurar formulário de login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const senha = document.getElementById('senhaAcesso').value;
-            login(senha);
+            login(document.getElementById('senhaAcesso').value);
         });
     }
     
-    // Configurar formulário de nota
-    const notaForm = document.getElementById('notaForm');
-    if (notaForm) {
-        notaForm.addEventListener('submit', cadastrarNota);
-    }
+    document.getElementById('adicionarParcelasBtn')?.addEventListener('click', adicionarParcelas);
+    document.getElementById('selectMes')?.addEventListener('change', () => renderBoletosAgrupados());
+    document.getElementById('selectStatus')?.addEventListener('change', () => renderBoletosAgrupados());
     
-    // Configurar botão de adicionar parcelas
-    const adicionarParcelasBtn = document.getElementById('adicionarParcelasBtn');
-    if (adicionarParcelasBtn) {
-        adicionarParcelasBtn.addEventListener('click', adicionarParcelas);
-    }
+    document.getElementById('boletosPageBtn')?.addEventListener('click', () => {
+        document.getElementById('notasPage').style.display = 'none';
+        document.getElementById('boletosPage').style.display = 'block';
+        renderBoletosAgrupados();
+    });
     
-    // Configurar select de notas
-    const selectNota = document.getElementById('selectNotaBoleto');
-    if (selectNota) {
-        selectNota.addEventListener('change', (e) => {
-            const notaId = parseInt(e.target.value);
-            if (notaId) {
-                document.getElementById('formBoletos').style.display = 'block';
-                document.getElementById('listaBoletosContainer').style.display = 'block';
-                renderizarBoletosPage(notaId);
-            } else {
-                document.getElementById('formBoletos').style.display = 'none';
-                document.getElementById('listaBoletosContainer').style.display = 'none';
-            }
-        });
-    }
-    
-    // Configurar navegação
-    const boletosPageBtn = document.getElementById('boletosPageBtn');
-    if (boletosPageBtn) {
-        boletosPageBtn.addEventListener('click', () => {
-            document.getElementById('notasPage').style.display = 'none';
-            document.getElementById('boletosPage').style.display = 'block';
-            atualizarSelectNotas();
-        });
-    }
-    
-    // Configurar botão de exportar
-    const exportBtn = document.getElementById('exportExcelBtn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', exportarExcel);
-    }
-    
-    // Adicionar botão de logout
     adicionarBotaoLogout();
-    
-    // Configurar botão voltar
-    const headerButtons = document.querySelector('.header-buttons');
-    if (headerButtons) {
-        const voltarBtn = document.createElement('button');
-        voltarBtn.textContent = '◀ Voltar para Notas';
-        voltarBtn.className = 'btn-secondary';
-        voltarBtn.style.display = 'none';
-        voltarBtn.onclick = () => {
-            document.getElementById('boletosPage').style.display = 'none';
-            document.getElementById('notasPage').style.display = 'block';
-            voltarBtn.style.display = 'none';
-            document.getElementById('boletosPageBtn').style.display = 'flex';
-        };
-        headerButtons.appendChild(voltarBtn);
-        
-        // Observer para mostrar/esconder botão voltar
-        const observer = new MutationObserver(() => {
-            const boletosPage = document.getElementById('boletosPage');
-            if (boletosPage && boletosPage.style.display === 'block') {
-                voltarBtn.style.display = 'flex';
-                document.getElementById('boletosPageBtn').style.display = 'none';
-            } else {
-                voltarBtn.style.display = 'none';
-                document.getElementById('boletosPageBtn').style.display = 'flex';
-            }
-        });
-        observer.observe(document.getElementById('boletosPage'), { attributes: true, attributeFilter: ['style'] });
-    }
-    
-    // Verificar autenticação
     checkAuth();
 });
 
-// Fechar modais ao clicar fora
 window.onclick = (event) => {
-    const modalNota = document.getElementById('editNotaModal');
-    const modalBoleto = document.getElementById('editBoletoModal');
-    if (event.target === modalNota) {
-        modalNota.style.display = 'none';
-    }
-    if (event.target === modalBoleto) {
-        modalBoleto.style.display = 'none';
-    }
+    if (event.target === document.getElementById('editNotaModal')) fecharModal('editNotaModal');
+    if (event.target === document.getElementById('editBoletoModal')) fecharModal('editBoletoModal');
 };

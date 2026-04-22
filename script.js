@@ -1228,18 +1228,24 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
     };
     
     try {
-        await salvarNotaFirebase(nota);
+        let notaId;
         
         if (typeof db !== 'undefined') {
+            const docRef = await db.collection('notas').add(nota);
+            notaId = docRef.id;
             await carregarDadosFirebase();
         } else {
             notas.push(nota);
             if (!boletos[nota.id]) boletos[nota.id] = [];
             saveData();
             renderNotas();
-            atualizarSelectNotas();
+            notaId = nota.id;
         }
         
+        // ⭐ SALVAR O ID DA NOTA RECÉM-CADASTRADA PARA USAR NA PÁGINA DE BOLETOS ⭐
+        sessionStorage.setItem('ultimaNotaCadastrada', notaId);
+        
+        // Limpar formulário
         e.target.reset();
         const container = document.getElementById('produtosContainer');
         container.innerHTML = '';
@@ -1247,6 +1253,12 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
         
         document.getElementById('totalNota').value = 'R$ 0,000';
         mostrarNotificacao('Nota cadastrada com sucesso!', 'success');
+        
+        // ⭐ PERGUNTAR SE DESEJA IR PARA OS BOLETOS ⭐
+        if (confirm('Nota cadastrada com sucesso! Deseja cadastrar os boletos agora?')) {
+            irParaBoletosComNotaSelecionada(notaId);
+        }
+        
     } catch (error) {
         mostrarNotificacao('Erro ao cadastrar nota!', 'error');
     }
@@ -1615,6 +1627,26 @@ window.verBoletosNota = function(notaId) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
+// Função para ir para página de boletos com a nota já selecionada
+function irParaBoletosComNotaSelecionada(notaId) {
+    // Mudar para página de boletos
+    document.getElementById('notasPage').style.display = 'none';
+    document.getElementById('boletosPage').style.display = 'block';
+    document.getElementById('sangriaPage').style.display = 'none';
+    
+    // Aguardar um pequeno delay para garantir que o select foi populado
+    setTimeout(() => {
+        const selectNota = document.getElementById('selectNotaBoleto');
+        if (selectNota) {
+            selectNota.value = notaId;
+            // Disparar o evento change para carregar o valor
+            const event = new Event('change');
+            selectNota.dispatchEvent(event);
+            mostrarNotificacao(`Nota selecionada: ${selectNota.options[selectNota.selectedIndex]?.text}`, 'success');
+        }
+    }, 500);
+}
+
 // Fechar modal
 window.fecharModal = function(modalId) {
     document.getElementById(modalId).style.display = 'none';
@@ -1718,6 +1750,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('boletosPage').style.display = 'block';
         document.getElementById('sangriaPage').style.display = 'none';
         renderBoletosAgrupados();
+        
+        // ⭐ VERIFICAR SE HÁ UMA NOTA RECÉM-CADASTRADA ⭐
+        const ultimaNotaId = sessionStorage.getItem('ultimaNotaCadastrada');
+        if (ultimaNotaId) {
+            setTimeout(() => {
+                const selectNota = document.getElementById('selectNotaBoleto');
+                if (selectNota && selectNota.querySelector(`option[value="${ultimaNotaId}"]`)) {
+                    selectNota.value = ultimaNotaId;
+                    const event = new Event('change');
+                    selectNota.dispatchEvent(event);
+                    // Limpar após usar
+                    sessionStorage.removeItem('ultimaNotaCadastrada');
+                    mostrarNotificacao(`Nota selecionada automaticamente!`, 'success');
+                }
+            }, 500);
+        }
     });
     
     // ========== IMPLEMENTAÇÃO DA TELA DE SANGRIA ==========

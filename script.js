@@ -691,6 +691,14 @@ function calcularTotal(quantidade, precoUnitario) {
 
 function formatarData(data) {
     if (!data) return '-';
+    // Se for string ISO, converter corretamente
+    if (data.includes('T')) {
+        const dataObj = new Date(data);
+        const dia = String(dataObj.getDate()).padStart(2, '0');
+        const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+        const ano = dataObj.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    }
     const [ano, mes, dia] = data.split('-');
     return `${dia}/${mes}/${ano}`;
 }
@@ -1081,15 +1089,17 @@ function renderNotas() {
     // Ordenar notas por data (mais recente primeiro)
     const notasOrdenadas = [...notas].sort((a, b) => new Date(b.dataNota) - new Date(a.dataNota));
     
-    // Agrupar por mês/ano
+    // Agrupar por mês/ano - Usando split direto (sem new Date)
     const notasPorMes = {};
     notasOrdenadas.forEach(nota => {
-        const data = new Date(nota.dataNota);
-        const mesAno = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-        if (!notasPorMes[mesAno]) notasPorMes[mesAno] = [];
-        notasPorMes[mesAno].push(nota);
+        if (nota.dataNota) {
+            const [ano, mes] = nota.dataNota.split('-');  // ⬅️ CORRETO!
+            const mesAno = `${ano}-${mes}`;
+            if (!notasPorMes[mesAno]) notasPorMes[mesAno] = [];
+            notasPorMes[mesAno].push(nota);
+        }
     });
-    
+        
     // Para cada mês, garantir que as notas estejam ordenadas por data (mais recente primeiro)
     for (let mes in notasPorMes) {
         notasPorMes[mes].sort((a, b) => new Date(b.dataNota) - new Date(a.dataNota));

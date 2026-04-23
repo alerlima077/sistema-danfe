@@ -390,9 +390,10 @@
                 
                 <!-- Abas/Tabs -->
                 <div class="tabs-estoque">
-                    <button class="tab-btn active" onclick="mostrarAba('produtos')">📋 Produtos</button>
+                    <button class="tab-btn" onclick="mostrarAba('produtos')">📋 Produtos</button>
                     <button class="tab-btn" onclick="mostrarAba('movimentacoes')">📊 Movimentações</button>
                     <button class="tab-btn" onclick="mostrarAba('inventario')">🔢 Inventário</button>
+                    <button class="tab-btn" onclick="mostrarAba('consumo')">📈 Consumo</button>  <!-- ⭐ NOVA ABA -->
                     <button class="tab-btn" onclick="mostrarAba('relatorios')">📈 Relatórios</button>
                 </div>
                 
@@ -474,13 +475,11 @@
                                         <th>Produto</th>
                                         <th>Estoque</th>
                                         <th>Custo</th>
-                                        <th>Venda</th>
-                                        <th>Margem</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="produtosTableBody">
-                                    <tr><td colspan="7" class="empty-message">Nenhum produto cadastrado</td></tr>
+                                    <tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -526,7 +525,7 @@
                     </div>
                 </div>
                 
-                                <!-- Aba: Inventário -->
+                <!-- Aba: Inventário -->
                 <div id="abaInventario" class="aba-conteudo" style="display: none;">
                     <div class="inventario-header">
                         <h3>🔢 Contagem Semanal de Estoque</h3>
@@ -586,6 +585,82 @@
                                     <tr><td colspan="7" class="empty-message">Nenhuma contagem registrada</td></tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aba: Consumo de Produtos -->
+                <div id="abaConsumo" class="aba-conteudo" style="display: none;">
+                    <div class="card-consumo">
+                        <h3>📊 Controle de Consumo de Produtos</h3>
+                        
+                        <!-- Filtros -->
+                        <div class="filtros-consumo">
+                            <div class="form-group">
+                                <label>📅 Período</label>
+                                <select id="periodoConsumo" class="select-periodo">
+                                    <option value="diario">Diário</option>
+                                    <option value="semanal">Semanal</option>
+                                    <option value="mensal" selected>Mensal</option>
+                                    <option value="personalizado">Personalizado</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="dataInicioGroup" style="display: none;">
+                                <label>Data Início</label>
+                                <input type="date" id="dataInicioConsumo">
+                            </div>
+                            <div class="form-group" id="dataFimGroup" style="display: none;">
+                                <label>Data Fim</label>
+                                <input type="date" id="dataFimConsumo">
+                            </div>
+                            <div class="form-group">
+                                <label>🔍 Produto</label>
+                                <select id="produtoConsumo" class="select-produto-consumo">
+                                    <option value="todos">-- Todos os produtos --</option>
+                                </select>
+                            </div>
+                            <button id="filtrarConsumoBtn" class="btn-primary" type="button">🔍 Filtrar</button>
+                        </div>
+                        
+                        <!-- Cards de Resumo -->
+                        <div class="resumo-consumo">
+                            <div class="resumo-card-consumo">
+                                <span class="resumo-label-consumo">📦 Estoque Atual</span>
+                                <span class="resumo-valor-consumo" id="estoqueAtualConsumo">0 unidades</span>
+                            </div>
+                            <div class="resumo-card-consumo">
+                                <span class="resumo-label-consumo">📉 Consumo no Período</span>
+                                <span class="resumo-valor-consumo" id="consumoPeriodo">0 unidades</span>
+                            </div>
+                            <div class="resumo-card-consumo">
+                                <span class="resumo-label-consumo">📊 Total Consumido</span>
+                                <span class="resumo-valor-consumo" id="valorConsumidoPeriodo">0 unidades</span>
+                            </div>
+                            <div class="resumo-card-consumo">
+                                <span class="resumo-label-consumo">📈 Média Diária</span>
+                                <span class="resumo-valor-consumo" id="mediaDiaria">0 unidades/dia</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Tabela de Consumo Detalhado -->
+                        <div class="tabela-consumo">
+                            <h4>📋 Detalhamento do Consumo</h4>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Produto</th>
+                                            <th>Quantidade</th>
+                                            <th>Unidade</th>
+                                            <th>Motivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="consumoTableBody">
+                                        <td><td colspan="5" class="empty-message">Selecione um período e produto para visualizar</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>

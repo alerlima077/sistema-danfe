@@ -3,6 +3,41 @@ let produtos = [];
 let movimentacoes = [];
 let inventarios = [];
 
+// ========== FUNÇÕES DAS ABAS ==========
+
+function mostrarAba(aba) {
+    console.log('📑 Abrindo aba:', aba);
+    
+    // Esconder todas as abas
+    const abasIds = ['abaProdutos', 'abaMovimentacoes', 'abaInventario', 'abaConsumo', 'abaRelatorios'];
+    abasIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    
+    // Mostrar a aba selecionada
+    const abaId = 'aba' + aba.charAt(0).toUpperCase() + aba.slice(1);
+    const abaElement = document.getElementById(abaId);
+    if (abaElement) {
+        abaElement.style.display = 'block';
+        console.log('✅ Aba', aba, 'aberta');
+    } else {
+        console.error('❌ Aba não encontrada:', abaId);
+    }
+    
+    // Atualizar botões ativos
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        const onclickAttr = btn.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(`'${aba}'`)) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// Expor globalmente
+window.mostrarAba = mostrarAba;
+
 // ========== FUNÇÕES DO FIREBASE PARA PRODUTOS ==========
 
 // Carregar produtos do Firebase
@@ -162,22 +197,51 @@ function atualizarMargemInfo() {
 
 // ========== FUNÇÕES DAS ABAS ==========
 
+// ========== FUNÇÕES DAS ABAS ==========
+
 function mostrarAba(aba) {
+    console.log('📑 Abrindo aba:', aba);
+    
     // Esconder todas as abas
-    document.getElementById('abaProdutos').style.display = 'none';
-    document.getElementById('abaMovimentacoes').style.display = 'none';
-    document.getElementById('abaInventario').style.display = 'none';
-    document.getElementById('abaRelatorios').style.display = 'none';
+    const abas = ['Produtos', 'Movimentacoes', 'Inventario', 'Consumo', 'Relatorios'];
+    abas.forEach(nome => {
+        const element = document.getElementById(`aba${nome}`);
+        if (element) element.style.display = 'none';
+    });
     
     // Mostrar a aba selecionada
-    document.getElementById(`aba${aba.charAt(0).toUpperCase() + aba.slice(1)}`).style.display = 'block';
+    const abaSelecionada = document.getElementById(`aba${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+    if (abaSelecionada) {
+        abaSelecionada.style.display = 'block';
+        console.log(`✅ Aba ${aba} aberta`);
+    } else {
+        console.error(`❌ Aba ${aba} não encontrada`);
+    }
     
     // Atualizar botões ativos
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
+        // Verificar se o onclick chama a aba correta
+        const onclickAttr = btn.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(`'${aba}'`)) {
+            btn.classList.add('active');
+        }
     });
-    event.target.classList.add('active');
+    
+    // Recarregar dados específicos da aba
+    if (aba === 'movimentacoes' && typeof carregarMovimentacoes === 'function') {
+        carregarMovimentacoes({});
+    }
+    if (aba === 'inventario' && typeof carregarInventarios === 'function') {
+        carregarInventarios();
+    }
+    if (aba === 'consumo' && typeof carregarConsumo === 'function') {
+        carregarConsumo();
+    }
 }
+
+// Expor função globalmente
+window.mostrarAba = mostrarAba;
 
 // Expor função globalmente
 window.mostrarAba = mostrarAba;
@@ -625,14 +689,14 @@ window.excluirInventario = async function(inventarioId) {
     }
 };
 
-// ========== RENDERIZAÇÃO DA TABELA DE PRODUTOS COM CORES NO ESTOQUE ==========
+// ========== RENDERIZAÇÃO DA TABELA DE PRODUTOS (SEM VENDA E MARGEM) ==========
 
 function renderizarProdutos() {
     const tbody = document.getElementById('produtosTableBody');
     if (!tbody) return;
     
     if (produtos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Nenhum produto cadastrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td>' + '</tr>';
         return;
     }
     
@@ -669,18 +733,12 @@ function renderizarProdutos() {
                 <td><strong>${produto.nome}</strong><br><small>${produto.categoria || '-'}</small></td>
                 ${estoqueCelula}
                 <td>R$ ${(produto.precoCusto || 0).toFixed(3)}</td>
-                <td>R$ ${(produto.precoVenda || 0).toFixed(3)}</td>
-                <td>
-                    <span class="margem-badge ${(produto.margemLucro || 0) >= 40 ? 'alta' : (produto.margemLucro || 0) >= 20 ? 'media' : 'baixa'}">
-                        ${(produto.margemLucro || 0).toFixed(1)}%
-                    </span>
-                </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-edit" onclick="editarProduto('${produto.id}')">✏️ Editar</button>
-                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')">🗑️ Excluir</button>
-                        <button class="btn-primary" style="background: #10b981;" onclick="atualizarPrecoVenda('${produto.id}')">💰 Preço</button>
-                        <button class="btn-primary" style="background: #8b5cf6;" onclick="ajustarEstoque('${produto.id}')">📦 Estoque</button>
+                        <button class="btn-edit" onclick="editarProduto('${produto.id}')" title="Editar produto">✏️ Editar</button>
+                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')" title="Excluir produto">🗑️ Excluir</button>
+                        <button class="btn-preco" onclick="atualizarPrecoVenda('${produto.id}')" title="Atualizar preço de venda">💰 Preço</button>
+                        <button class="btn-estoque-acao" onclick="ajustarEstoque('${produto.id}')" title="Ajustar estoque">📦 Estoque</button>
                     </div>
                 </td>
             </tr>
@@ -1703,3 +1761,348 @@ console.log('   admin.listarMovimentacoes() - Lista todas as movimentações');
 console.log('   admin.excluirMovimentacao("ID") - Exclui movimentação específica');
 console.log('   admin.limparMovimentacoesTeste() - Exclui movimentações de teste');
 console.log('   admin.excluirPorPeriodo("2024-01-01", "2024-01-31") - Exclui por período');
+
+// ========== FUNÇÕES DA TELA DE CONSUMO ==========
+
+// Variáveis da tela de consumo
+if (typeof consumoData === 'undefined') {
+    var consumoData = [];
+}
+let produtosConsumo = [];
+
+// ========== CONFIGURAÇÃO DOS FILTROS DE CONSUMO ==========
+
+// Mostrar/esconder campos de data personalizada
+function toggleCamposDataPersonalizada() {
+    const periodo = document.getElementById('periodoConsumo');
+    const dataInicioGroup = document.getElementById('dataInicioGroup');
+    const dataFimGroup = document.getElementById('dataFimGroup');
+    
+    console.log('Toggle datas - Período selecionado:', periodo?.value);
+    
+    if (periodo && dataInicioGroup && dataFimGroup) {
+        if (periodo.value === 'personalizado') {
+            dataInicioGroup.style.display = 'block';
+            dataFimGroup.style.display = 'block';
+            console.log('Campos de data personalizada visíveis');
+        } else {
+            dataInicioGroup.style.display = 'none';
+            dataFimGroup.style.display = 'none';
+            console.log('Campos de data personalizada ocultos');
+        }
+    } else {
+        console.log('Elementos não encontrados');
+    }
+}
+
+// Configurar event listeners da tela de consumo
+function configurarConsumoListeners() {
+    console.log('⚙️ Configurando listeners de consumo...');
+    
+    const periodoSelect = document.getElementById('periodoConsumo');
+    if (periodoSelect) {
+        periodoSelect.addEventListener('change', toggleCamposDataPersonalizada);
+        console.log('✅ Listener do período configurado');
+    }
+    
+    const filtrarBtn = document.getElementById('filtrarConsumoBtn');
+    if (filtrarBtn) {
+        // Remover listeners antigos
+        const novoBtn = filtrarBtn.cloneNode(true);
+        filtrarBtn.parentNode.replaceChild(novoBtn, filtrarBtn);
+        
+        novoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('👉 Botão Filtrar Consumo clicado!');
+            if (typeof exibirConsumo === 'function') {
+                exibirConsumo();
+            } else {
+                console.error('Função exibirConsumo não encontrada');
+            }
+        });
+        console.log('✅ Botão Filtrar configurado');
+    } else {
+        console.log('❌ Botão filtrarConsumoBtn não encontrado');
+    }
+    
+    // Inicializar toggle
+    toggleCamposDataPersonalizada();
+}
+
+// Calcular período com base na seleção
+function calcularPeriodo() {
+    const periodo = document.getElementById('periodoConsumo').value;
+    const hoje = new Date();
+    let dataInicio, dataFim;
+    
+    dataFim = new Date(hoje);
+    dataFim.setHours(23, 59, 59, 999);
+    
+    switch(periodo) {
+        case 'diario':
+            dataInicio = new Date(hoje);
+            dataInicio.setHours(0, 0, 0, 0);
+            break;
+        case 'semanal':
+            dataInicio = new Date(hoje);
+            dataInicio.setDate(hoje.getDate() - 7);
+            dataInicio.setHours(0, 0, 0, 0);
+            break;
+        case 'mensal':
+            dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            dataInicio.setHours(0, 0, 0, 0);
+            break;
+        case 'personalizado':
+            const dataInicioStr = document.getElementById('dataInicioConsumo').value;
+            const dataFimStr = document.getElementById('dataFimConsumo').value;
+            dataInicio = new Date(dataInicioStr);
+            dataFim = new Date(dataFimStr);
+            dataFim.setHours(23, 59, 59, 999);
+            break;
+        default:
+            dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    }
+    
+    return { dataInicio, dataFim };
+}
+
+// Carregar consumo
+async function carregarConsumo() {
+    console.log('🔄 Carregando dados de consumo...');
+    
+    if (typeof db === 'undefined') {
+        console.log('Firebase não disponível');
+        return;
+    }
+    
+    try {
+        // Buscar movimentações de saída
+        const snapshot = await db.collection('movimentacoes')
+            .where('tipo', '==', 'saida')
+            .get();
+        
+        consumoData = [];
+        snapshot.forEach(doc => {
+            consumoData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        console.log(`📦 ${consumoData.length} movimentações de saída encontradas`);
+        
+        // Popular select de produtos
+        popularSelectProdutosConsumo();
+        
+    } catch (error) {
+        console.error('Erro ao carregar consumo:', error);
+    }
+}
+
+// Popular select de produtos na tela de consumo
+function popularSelectProdutosConsumo() {
+    const select = document.getElementById('produtoConsumo');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="todos">-- Todos os produtos --</option>';
+    
+    // Usar produtos da lista global
+    if (typeof produtos !== 'undefined' && produtos.length > 0) {
+        produtos.forEach(produto => {
+            select.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome}</option>`;
+        });
+    }
+}
+
+// Filtrar e exibir consumo - valores em quantidade
+async function exibirConsumo() {
+    console.log('🔍 Filtrando consumo...');
+    
+    const produtoId = document.getElementById('produtoConsumo').value;
+    const periodo = document.getElementById('periodoConsumo').value;
+    
+    console.log('Período selecionado:', periodo);
+    console.log('Produto ID:', produtoId);
+    
+    // Verificar se consumoData está vazio
+    if (!consumoData || consumoData.length === 0) {
+        console.log('Nenhum dado de consumo carregado. Recarregando...');
+        await carregarConsumo();
+    }
+    
+    // Calcular período com base na seleção
+    let dataInicio, dataFim;
+    const hoje = new Date();
+    
+    if (periodo === 'personalizado') {
+        const inicioStr = document.getElementById('dataInicioConsumo').value;
+        const fimStr = document.getElementById('dataFimConsumo').value;
+        
+        if (!inicioStr || !fimStr) {
+            alert('Selecione as datas de início e fim!');
+            return;
+        }
+        
+        dataInicio = new Date(inicioStr);
+        dataInicio.setHours(0, 0, 0, 0);
+        dataFim = new Date(fimStr);
+        dataFim.setHours(23, 59, 59, 999);
+    } else if (periodo === 'diario') {
+        dataInicio = new Date(hoje);
+        dataInicio.setHours(0, 0, 0, 0);
+        dataFim = new Date(hoje);
+        dataFim.setHours(23, 59, 59, 999);
+    } else if (periodo === 'semanal') {
+        dataInicio = new Date(hoje);
+        dataInicio.setDate(hoje.getDate() - 7);
+        dataInicio.setHours(0, 0, 0, 0);
+        dataFim = new Date(hoje);
+        dataFim.setHours(23, 59, 59, 999);
+    } else {
+        // Mensal
+        dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        dataInicio.setHours(0, 0, 0, 0);
+        dataFim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        dataFim.setHours(23, 59, 59, 999);
+    }
+    
+    console.log('Data Início:', dataInicio);
+    console.log('Data Fim:', dataFim);
+    
+    // Filtrar movimentações por período e produto
+    let movimentacoesFiltradas = [...consumoData];
+    
+    // Filtrar por período
+    movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
+        const dataMov = new Date(mov.dataHora);
+        return dataMov >= dataInicio && dataMov <= dataFim;
+    });
+    
+    // Filtrar por produto
+    if (produtoId !== 'todos') {
+        movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => mov.produtoId === produtoId);
+    }
+    
+    console.log(`${movimentacoesFiltradas.length} movimentações após filtros`);
+    
+    // Calcular totais em quantidade
+    const quantidadeTotal = movimentacoesFiltradas.reduce((sum, m) => sum + (m.quantidade || 0), 0);
+    
+    // Calcular média diária em quantidade
+    const dias = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24)) || 1;
+    const mediaDiaria = quantidadeTotal / dias;
+    
+    // Obter unidade do produto
+    let unidade = 'unidades';
+    let estoqueAtual = 0;
+    
+    if (produtoId !== 'todos' && typeof produtos !== 'undefined' && produtos.length > 0) {
+        const produto = produtos.find(p => p.id === produtoId);
+        if (produto) {
+            estoqueAtual = produto.estoqueAtual || 0;
+            unidade = produto.unidade || 'UN';
+            console.log('Produto encontrado:', produto.nome, 'Unidade:', unidade);
+        } else {
+            console.log('Produto não encontrado!');
+        }
+    } else if (produtoId === 'todos' && typeof produtos !== 'undefined') {
+        estoqueAtual = produtos.reduce((sum, p) => sum + (p.estoqueAtual || 0), 0);
+        unidade = 'unidades';
+    }
+    
+    // Atualizar cards (em quantidade)
+    const estoqueElement = document.getElementById('estoqueAtualConsumo');
+    const consumoElement = document.getElementById('consumoPeriodo');
+    const totalElement = document.getElementById('valorConsumidoPeriodo');
+    const mediaElement = document.getElementById('mediaDiaria');
+    
+    if (estoqueElement) estoqueElement.innerHTML = `${estoqueAtual.toFixed(3)} ${unidade}`;
+    if (consumoElement) consumoElement.innerHTML = `${quantidadeTotal.toFixed(3)} ${unidade}`;
+    if (totalElement) totalElement.innerHTML = `${quantidadeTotal.toFixed(3)} ${unidade}`;
+    if (mediaElement) mediaElement.innerHTML = `${mediaDiaria.toFixed(3)} ${unidade}/dia`;
+    
+    console.log('Cards atualizados:', {
+        estoque: `${estoqueAtual.toFixed(3)} ${unidade}`,
+        consumo: `${quantidadeTotal.toFixed(3)} ${unidade}`,
+        media: `${mediaDiaria.toFixed(3)} ${unidade}/dia`
+    });
+    
+    // Renderizar tabela
+    renderizarTabelaConsumo(movimentacoesFiltradas, produtoId);
+}
+
+
+// Renderizar tabela de consumo (sem valor em reais)
+function renderizarTabelaConsumo(movimentacoes, produtoId) {
+    const tbody = document.getElementById('consumoTableBody');
+    if (!tbody) return;
+    
+    if (movimentacoes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum consumo registrado no período</td></tr>';
+        return;
+    }
+    
+    // Obter unidade do produto selecionado
+    let unidade = 'UN';
+    if (produtoId !== 'todos' && typeof produtos !== 'undefined') {
+        const produto = produtos.find(p => p.id === produtoId);
+        if (produto) {
+            unidade = produto.unidade || 'UN';
+        }
+    }
+    
+    tbody.innerHTML = movimentacoes.map(mov => {
+        const dataFormatada = new Date(mov.dataHora).toLocaleString('pt-BR');
+        const produtoNome = mov.produtoNome || mov.produtoId;
+        const quantidade = (mov.quantidade || 0).toFixed(3);
+        const motivo = mov.motivo === 'inventario' ? '🔢 Baixa por Inventário' : 
+                      mov.motivo === 'nota_fiscal' ? '📄 Nota Fiscal' : '✏️ Ajuste Manual';
+        
+        return `
+            <tr>
+                <td>${dataFormatada}</td>
+                <td><strong>${produtoNome}</strong></td>
+                <td>${quantidade}</td>
+                <td>${unidade}</td>
+                <td>${motivo}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Configurar event listeners da tela de consumo
+function configurarConsumoListeners() {
+    const periodoSelect = document.getElementById('periodoConsumo');
+    if (periodoSelect) {
+        periodoSelect.addEventListener('change', toggleCamposDataPersonalizada);
+    }
+    
+    const filtrarBtn = document.getElementById('filtrarConsumoBtn');
+    if (filtrarBtn) {
+        filtrarBtn.addEventListener('click', exibirConsumo);
+    }
+    
+    // Inicializar select de produtos
+    popularSelectProdutosConsumo();
+}
+
+// Atualizar função inicializarEstoque para incluir consumo
+function inicializarEstoqueCompleto() {
+    // Chamar funções existentes
+    if (typeof inicializarFormularioProduto === 'function') inicializarFormularioProduto();
+    if (typeof carregarProdutos === 'function') carregarProdutos();
+    if (typeof carregarMovimentacoes === 'function') carregarMovimentacoes();
+    if (typeof carregarInventarios === 'function') carregarInventarios();
+    
+    // Novas funções
+    carregarConsumo();
+    if (typeof configurarMovimentacoesListeners === 'function') configurarMovimentacoesListeners();
+    if (typeof configurarInventarioListeners === 'function') configurarInventarioListeners();
+    configurarConsumoListeners();
+}
+
+// Substituir a função inicializarEstoque pela nova (se existir)
+if (typeof window.inicializarEstoque !== 'undefined') {
+    window.inicializarEstoque = inicializarEstoqueCompleto;
+} else {
+    window.inicializarEstoque = inicializarEstoqueCompleto;
+}
+
+console.log('✅ Funções da tela de consumo carregadas!');

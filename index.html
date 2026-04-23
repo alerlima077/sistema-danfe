@@ -8,6 +8,9 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <!-- Meta tags para SEO -->
     <title>Sistema Julio's Pizzaria - Gestão de Notas Fiscais e Boletos</title>
@@ -70,6 +73,9 @@
                     </div>
                 </div>
                 <div class="header-buttons">
+                    <button id="dashboardPageBtn" class="btn-dashboard">
+                        📊 Dashboard
+                    </button>
                     <button id="estoquePageBtn" class="btn-estoque">
                         📦 Estoque
                     </button>
@@ -85,6 +91,130 @@
                 </div>
             </div>
         </header>
+
+        <!-- Dashboard Principal (Tela Inicial) -->
+        <main id="dashboardPage" class="main-content">
+            <div class="dashboard-container">
+                
+                <!-- Título -->
+                <div class="dashboard-header">
+                    <h2>📊 Painel de Controle de Estoque</h2>
+                    <p>Visão geral do seu estoque e consumo</p>
+                </div>
+
+                <!-- Cards de Resumo do Estoque -->
+                <div class="dashboard-cards">
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-primary">
+                            <span>📦</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="totalProdutos">0</h3>
+                            <p>Produtos Cadastrados</p>
+                        </div>
+                    </div>
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-success">
+                            <span>✅</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="produtosNormal">0</h3>
+                            <p>Estoque Normal</p>
+                        </div>
+                    </div>
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-warning">
+                            <span>⚠️</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="produtosAlerta">0</h3>
+                            <p>Estoque em Alerta</p>
+                        </div>
+                    </div>
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-danger">
+                            <span>🔴</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="produtosCritico">0</h3>
+                            <p>Estoque Crítico/Zerado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards de Valores -->
+                <div class="dashboard-cards-second">
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-cyan">
+                            <span>💰</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="valorTotalEstoque">R$ 0,00</h3>
+                            <p>Valor Total do Estoque</p>
+                        </div>
+                    </div>
+                    <div class="card-dashboard">
+                        <div class="card-icon bg-purple">
+                            <span>📈</span>
+                        </div>
+                        <div class="card-info">
+                            <h3 id="giroEstoque">0</h3>
+                            <p>Itens em Movimentação (30 dias)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráficos e Listas -->
+                <div class="dashboard-row">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>📦 Produtos com Estoque Baixo</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="alertasEstoque" class="alertas-lista">
+                                <div class="empty-message">Carregando...</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3>🏆 Top 5 Produtos Mais Consumidos</h3>
+                            <span class="periodo-badge">Últimos 30 dias</span>
+                        </div>
+                        <div class="card-body">
+                            <div id="topConsumo" class="top-consumo-lista">
+                                <div class="empty-message">Carregando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="dashboard-card full-width">
+                        <div class="card-header">
+                            <h3>📊 Consumo por Categoria</h3>
+                            <span class="periodo-badge">Últimos 30 dias</span>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="graficoConsumo" width="400" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-row">
+                    <div class="dashboard-card full-width">
+                        <div class="card-header">
+                            <h3>📋 Resumo do Estoque</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="resumoCategorias" class="resumo-categorias">
+                                <div class="empty-message">Carregando...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
 
         <!-- Main Content - Página de Notas (visível por padrão) -->
         <main id="notasPage" class="main-content">
@@ -445,19 +575,12 @@
                                         <input type="number" id="produtoPrecoCusto" step="0.001" placeholder="0,000">
                                     </div>
                                     <div class="form-group">
-                                        <label>Preço de Venda (R$)</label>
-                                        <input type="number" id="produtoPrecoVenda" step="0.001" placeholder="0,000">
+                                        <label>Estoque Mínimo</label>
+                                        <input type="number" id="produtoEstoqueMinimo" step="0.001" placeholder="Quantidade mínima">
                                     </div>
-                                </div>
-                                <div id="margemInfo" class="margem-info" style="margin-top: 10px;">
-                                    💰 Preencha custo e venda para ver a margem de lucro
                                 </div>
                             </div>
                             
-                            <div class="form-group">
-                                <label>Estoque Mínimo</label>
-                                <input type="number" id="produtoEstoqueMinimo" step="0.001" placeholder="Quantidade mínima">
-                            </div>
                             <div class="form-group full-width">
                                 <button type="button" id="salvarProdutoBtn" class="btn-primary">➕ Cadastrar Produto</button>
                             </div>
@@ -667,25 +790,35 @@
                 
                 <!-- Aba: Relatórios -->
                 <div id="abaRelatorios" class="aba-conteudo" style="display: none;">
-                    <div class="filtros-relatorios">
-                        <div class="form-group">
-                            <label>Produto</label>
-                            <select id="relProduto">
-                                <option value="todos">Todos</option>
-                            </select>
+                    <div class="relatorios-container">
+                        <!-- Seletor de tipo de relatório -->
+                        <div class="filtros-relatorios">
+                            <div class="form-group">
+                                <label>📊 Tipo de Relatório</label>
+                                <select id="tipoRelatorio" class="select-relatorio">
+                                    <option value="estoque">📦 Relatório de Estoque</option>
+                                    <option value="consumo">📉 Relatório de Consumo</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="periodoRelatorioGroup">
+                                <label>📅 Período</label>
+                                <select id="periodoRelatorio" class="select-periodo">
+                                    <option value="esteMes">Este Mês</option>
+                                    <option value="mesPassado">Mês Passado</option>
+                                    <option value="ultimos30">Últimos 30 Dias</option>
+                                    <option value="ultimos90">Últimos 90 Dias</option>
+                                    <option value="ano">Este Ano</option>
+                                </select>
+                            </div>
+                            <button id="gerarRelatorioBtn" class="btn-primary">📊 Gerar Relatório</button>
+                            <button id="exportarRelatorioBtn" class="btn-export">📎 Exportar Excel</button>
                         </div>
-                        <div class="form-group">
-                            <label>Data Início</label>
-                            <input type="date" id="relDataInicio">
+                        
+                        <!-- Resultado do Relatório -->
+                        <div id="resultadoRelatorio" class="resultado-relatorio">
+                        <!-- Conteúdo gerado dinamicamente -->
                         </div>
-                        <div class="form-group">
-                            <label>Data Fim</label>
-                            <input type="date" id="relDataFim">
-                        </div>
-                        <button id="gerarRelatorioBtn" class="btn-primary">📊 Gerar Relatório</button>
-                        <button id="exportarRelatorioBtn" class="btn-export">📎 Exportar Excel</button>
                     </div>
-                    <div id="resultadoRelatorio" class="resultado-relatorio"></div>
                 </div>
             </section>
         </main>

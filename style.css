@@ -178,6 +178,296 @@ body.logged-out .app-container {
     font-size: 12px;
 }
 
+/* ========== DASHBOARD ESTOQUE ========== */
+
+.dashboard-header {
+    margin-bottom: 30px;
+}
+
+.dashboard-header h2 {
+    font-size: 24px;
+    color: var(--dark);
+    margin-bottom: 5px;
+}
+
+.dashboard-header p {
+    color: var(--light);
+    font-size: 16px;
+}
+
+.dashboard-cards, .dashboard-cards-second {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.card-dashboard {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-dashboard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.card-icon {
+    width: 55px;
+    height: 55px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+}
+
+.card-info h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dark);
+}
+
+.card-info p {
+    font-size: 13px;
+    color: var(--gray);
+    margin: 5px 0 0;
+}
+
+/* Cores dos ícones */
+.bg-primary { background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; }
+.bg-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+.bg-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+.bg-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+.bg-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+.bg-cyan { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; }
+
+.dashboard-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.dashboard-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-header {
+    padding: 15px 20px;
+    background: var(--light);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.card-header h3 {
+    font-size: 16px;
+    margin: 0;
+    color: var(--dark);
+}
+
+.periodo-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: var(--primary);
+    color: white;
+    border-radius: 20px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Alertas de Estoque */
+.alertas-lista, .top-consumo-lista {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.alerta-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.alerta-item:last-child {
+    border-bottom: none;
+}
+
+.alerta-produto {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.alerta-quantidade {
+    font-size: 12px;
+    color: var(--gray);
+}
+
+.alerta-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.alerta-critico {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.alerta-alerta {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+/* Top Consumo */
+.consumo-item {
+    margin-bottom: 15px;
+}
+
+.consumo-item:last-child {
+    margin-bottom: 0;
+}
+
+.consumo-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+
+.consumo-nome {
+    font-weight: 600;
+}
+
+.consumo-valor {
+    color: var(--gray);
+}
+
+.consumo-bar {
+    height: 8px;
+    background: var(--light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.consumo-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+    border-radius: 4px;
+    transition: width 0.5s;
+}
+
+/* Resumo de Categorias */
+.resumo-categorias {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.categoria-item {
+    background: var(--light);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.categoria-nome {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 8px;
+}
+
+.categoria-quantidade {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--dark);
+}
+
+.categoria-valor {
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 5px;
+}
+
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    color: var(--gray);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .dashboard-cards, .dashboard-cards-second {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .dashboard-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-dashboard {
+        padding: 12px;
+    }
+    
+    .card-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 22px;
+    }
+    
+    .card-info h3 {
+        font-size: 18px;
+    }
+    
+    .card-info p {
+        font-size: 11px;
+    }
+    
+    .resumo-categorias {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.btn-dashboard {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+}
+
 /* Tabs do Estoque */
 .tabs-estoque {
     display: flex;
@@ -2090,5 +2380,165 @@ body {
     
     .modal-form .form-group {
         margin-bottom: 10px;
+    }
+}
+
+/* ========== ESTILOS DOS RELATÓRIOS ========== */
+
+.relatorios-container {
+    width: 100%;
+}
+
+.filtros-relatorios {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    background: var(--light);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.filtros-relatorios .form-group {
+    min-width: 180px;
+}
+
+.select-relatorio {
+    padding: 10px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    background: white;
+}
+
+.resultado-relatorio {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.relatorio-titulo {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: var(--dark);
+    border-left: 4px solid var(--primary);
+    padding-left: 12px;
+}
+
+.relatorio-subtitulo {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabela-relatorio {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tabela-relatorio th {
+    background: var(--light);
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray);
+    border-bottom: 2px solid var(--border);
+}
+
+.tabela-relatorio td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tabela-relatorio tr:hover {
+    background: var(--light);
+}
+
+.status-baixo {
+    background-color: #fee2e2;
+    color: #991b1b;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-block;
+}
+
+.status-medio {
+    background-color: #fed7aa;
+    color: #92400e;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-block;
+}
+
+.status-alto {
+    background-color: #d1fae5;
+    color: #065f46;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: inline-block;
+}
+
+.resumo-relatorio {
+    margin-top: 20px;
+    padding: 15px;
+    background: var(--light);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.resumo-item {
+    text-align: center;
+    flex: 1;
+}
+
+.resumo-label {
+    font-size: 12px;
+    color: var(--gray);
+    display: block;
+}
+
+.resumo-valor {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .filtros-relatorios {
+        flex-direction: column;
+    }
+    
+    .filtros-relatorios .form-group {
+        width: 100%;
+    }
+    
+    .filtros-relatorios button {
+        width: 100%;
+    }
+    
+    .tabela-relatorio {
+        font-size: 12px;
+    }
+    
+    .tabela-relatorio th,
+    .tabela-relatorio td {
+        padding: 8px 6px;
+    }
+    
+    .resumo-relatorio {
+        flex-direction: column;
+        gap: 10px;
     }
 }

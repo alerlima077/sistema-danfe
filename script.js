@@ -1761,14 +1761,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectStatus')?.addEventListener('change', () => renderBoletosAgrupados());
     document.getElementById('selectMesNotas')?.addEventListener('change', () => renderNotas());
     
+    // ========== BOTÃO BOLETOS ==========
     document.getElementById('boletosPageBtn')?.addEventListener('click', () => {
+        document.getElementById('dashboardPage').style.display = 'none';
         document.getElementById('notasPage').style.display = 'none';
         document.getElementById('boletosPage').style.display = 'block';
         document.getElementById('sangriaPage').style.display = 'none';
         document.getElementById('estoquePage').style.display = 'none';
         renderBoletosAgrupados();
         
-        // ⭐ VERIFICAR SE HÁ UMA NOTA RECÉM-CADASTRADA ⭐
         const ultimaNotaId = sessionStorage.getItem('ultimaNotaCadastrada');
         if (ultimaNotaId) {
             setTimeout(() => {
@@ -1777,7 +1778,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectNota.value = ultimaNotaId;
                     const event = new Event('change');
                     selectNota.dispatchEvent(event);
-                    // Limpar após usar
                     sessionStorage.removeItem('ultimaNotaCadastrada');
                     mostrarNotificacao(`Nota selecionada automaticamente!`, 'success');
                 }
@@ -1785,21 +1785,68 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // ========== IMPLEMENTAÇÃO DA TELA DE SANGRIA ==========
+    // ========== BOTÃO DASHBOARD ==========
+    const dashboardPageBtn = document.getElementById('dashboardPageBtn');
+    if (dashboardPageBtn) {
+        dashboardPageBtn.addEventListener('click', () => {
+            console.log('Dashboard clicado');
+            document.getElementById('dashboardPage').style.display = 'block';
+            document.getElementById('notasPage').style.display = 'none';
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('sangriaPage').style.display = 'none';
+            document.getElementById('estoquePage').style.display = 'none';
+            if (typeof carregarDashboard === 'function') {
+                carregarDashboard();
+            }
+        });
+    }
     
-    // Botão Sangria
+    // ========== BOTÃO ESTOQUE ==========
+    const estoquePageBtn = document.getElementById('estoquePageBtn');
+    if (estoquePageBtn) {
+        estoquePageBtn.addEventListener('click', () => {
+            console.log('Estoque clicado');
+            document.getElementById('dashboardPage').style.display = 'none';
+            document.getElementById('notasPage').style.display = 'none';
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('sangriaPage').style.display = 'none';
+            document.getElementById('estoquePage').style.display = 'block';
+            if (typeof inicializarEstoque === 'function') {
+                inicializarEstoque();
+            }
+        });
+    }
+    
+    // ========== BOTÃO SANGRIA ==========
     const sangriaPageBtn = document.getElementById('sangriaPageBtn');
     if (sangriaPageBtn) {
         sangriaPageBtn.addEventListener('click', () => {
+            console.log('Sangria clicado');
+            document.getElementById('dashboardPage').style.display = 'none';
             document.getElementById('notasPage').style.display = 'none';
             document.getElementById('boletosPage').style.display = 'none';
             document.getElementById('sangriaPage').style.display = 'block';
             document.getElementById('estoquePage').style.display = 'none';
-            renderSangria();
+            if (typeof renderSangria === 'function') {
+                renderSangria();
+            }
         });
     }
     
-    // Voltar da Sangria
+    // ========== BOTÃO NOTAS (se existir) ==========
+    const notasPageBtn = document.getElementById('notasPageBtn');
+    if (notasPageBtn) {
+        notasPageBtn.addEventListener('click', () => {
+            console.log('Notas clicado');
+            document.getElementById('dashboardPage').style.display = 'none';
+            document.getElementById('notasPage').style.display = 'block';
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('sangriaPage').style.display = 'none';
+            document.getElementById('estoquePage').style.display = 'none';
+        });
+    }
+    
+    // ========== BOTÃO VOLTAR DA SANGRIA ==========
     const voltarDaSangriaBtn = document.getElementById('voltarDaSangriaBtn');
     if (voltarDaSangriaBtn) {
         voltarDaSangriaBtn.addEventListener('click', () => {
@@ -1808,13 +1855,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Adicionar pagamento
+    // ========== BOTÃO ADICIONAR PAGAMENTO ==========
     const adicionarPagamentoBtn = document.getElementById('adicionarPagamentoBtn');
     if (adicionarPagamentoBtn) {
         adicionarPagamentoBtn.addEventListener('click', adicionarPagamento);
     }
     
-    // Filtros Sangria
+    // ========== FILTROS SANGRIA ==========
     const selectMesSangria = document.getElementById('selectMesSangria');
     if (selectMesSangria) {
         selectMesSangria.addEventListener('change', () => renderSangria());
@@ -1824,7 +1871,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (selectCategoriaSangria) {
         selectCategoriaSangria.addEventListener('change', () => renderSangria());
     }
-
+    
+    // ========== BOTÃO VOLTAR NOTAS ==========
     const voltarNotasBtn = document.getElementById('voltarNotasBtn');
     if (voltarNotasBtn) {
         voltarNotasBtn.addEventListener('click', () => {
@@ -1833,6 +1881,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // ========== SELECT NOTA BOLETO ==========
     const selectNota = document.getElementById('selectNotaBoleto');
     if (selectNota) {
         selectNota.addEventListener('change', (e) => {
@@ -1860,6 +1909,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // ========== CÁLCULO VALOR PARCELA ==========
     const valorBoletoInput = document.getElementById('valorBoleto');
     const numParcelasInput = document.getElementById('numParcelas');
     
@@ -1872,8 +1922,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // ========== IMPLEMENTAÇÃO PARA INTERVALO PERSONALIZADO DE PARCELAS ==========
-    
-    // Mostrar/esconder campo de dias personalizados
     function toggleDiasPersonalizado() {
         const intervaloSelect = document.getElementById('intervaloParcelas');
         const diasPersonalizadoGroup = document.getElementById('diasPersonalizadoGroup');
@@ -1886,7 +1934,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
+    
     // Pré-definir data/hora atual no campo de pagamento
     const dataHoraPagamento = document.getElementById('dataHoraPagamento');
     if (dataHoraPagamento) {
@@ -1895,7 +1943,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dataHoraPagamento.value = agora.toISOString().slice(0, 16);
     }
     
-    // Intervalo personalizado entre parcelas
     const intervaloSelect = document.getElementById('intervaloParcelas');
     if (intervaloSelect) {
         intervaloSelect.addEventListener('change', toggleDiasPersonalizado);
@@ -1914,12 +1961,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Inicializar toggle de dias personalizados
     toggleDiasPersonalizado();
     
     // ========== IMPLEMENTAÇÃO PARA MÚLTIPLOS PRODUTOS ==========
-    
-    // ⭐ BOTÃO PARA ADICIONAR NOVO PRODUTO (NOTAS) ⭐
     const adicionarProdutoBtn = document.getElementById('adicionarProdutoBtn');
     if (adicionarProdutoBtn) {
         adicionarProdutoBtn.addEventListener('click', function(e) {
@@ -1930,7 +1974,6 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Botão adicionarProdutoBtn não encontrado - verifique o ID no HTML');
     }
     
-    // Inicializar produtos (configurar event listeners do primeiro produto)
     function inicializarProdutos() {
         const primeiroProduto = document.querySelector('.produto-item');
         if (primeiroProduto) {
@@ -1951,7 +1994,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Botão para adicionar novo item na SANGRIA
     const adicionarItemPagamentoBtn = document.getElementById('adicionarItemPagamentoBtn');
     if (adicionarItemPagamentoBtn) {
         adicionarItemPagamentoBtn.addEventListener('click', function(e) {
@@ -1962,10 +2004,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Botão adicionarItemPagamentoBtn não encontrado - verifique o ID no HTML');
     }
     
-    // Inicializar produtos ao carregar a página
     inicializarProdutos();
     
-    // Se houver produtos já existentes (edição), configurar todos
     function configurarTodosProdutos() {
         document.querySelectorAll('.produto-item').forEach(produtoItem => {
             const qtdInput = produtoItem.querySelector('.produto-quantidade');
@@ -1987,31 +2027,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Chamar configuração de todos produtos
     configurarTodosProdutos();
     
-    // ========== IMPLEMENTAÇÃO DO BOTÃO ESTOQUE ==========
-    
-    // Botão Estoque
-    const estoquePageBtn = document.getElementById('estoquePageBtn');
-    if (estoquePageBtn) {
-        estoquePageBtn.addEventListener('click', () => {
-            document.getElementById('notasPage').style.display = 'none';
-            document.getElementById('boletosPage').style.display = 'none';
-            document.getElementById('sangriaPage').style.display = 'none';
-            document.getElementById('estoquePage').style.display = 'block';
-            
-            // Carregar dados do estoque se as funções existirem
-            if (typeof carregarProdutos === 'function') {
-                carregarProdutos();
+    // ========== CARREGAR DASHBOARD AO INICIAR ==========
+    setTimeout(() => {
+        if (typeof produtos !== 'undefined' && produtos.length > 0) {
+            if (typeof carregarDashboard === 'function') {
+                carregarDashboard();
             }
-            if (typeof carregarMovimentacoes === 'function') {
-                carregarMovimentacoes();
-            }
-        });
-    } else {
-        console.log('Botão estoquePageBtn não encontrado - verifique o ID no HTML');
-    }
+        } else {
+            const checkInterval = setInterval(() => {
+                if (typeof produtos !== 'undefined' && produtos.length > 0) {
+                    clearInterval(checkInterval);
+                    if (typeof carregarDashboard === 'function') {
+                        carregarDashboard();
+                    }
+                }
+            }, 500);
+        }
+    }, 1000);
     
     adicionarBotaoLogout();
     checkAuth();
@@ -2020,3 +2054,575 @@ window.onclick = (event) => {
     if (event.target === document.getElementById('editNotaModal')) fecharModal('editNotaModal');
     if (event.target === document.getElementById('editBoletoModal')) fecharModal('editBoletoModal');
 };
+
+// ========== FUNÇÕES DO DASHBOARD (ESTOQUE) ==========
+
+let graficoConsumo = null;
+
+// Carregar dados do Dashboard
+async function carregarDashboard() {
+    console.log('📊 Carregando Dashboard de Estoque...');
+    
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        console.log('Aguardando produtos carregarem...');
+        setTimeout(() => carregarDashboard(), 1000);
+        return;
+    }
+    
+    // Calcular estatísticas do estoque
+    let produtosNormal = 0;
+    let produtosAlerta = 0;
+    let produtosCritico = 0;
+    let valorTotalEstoque = 0;
+    
+    produtos.forEach(produto => {
+        const atual = produto.estoqueAtual || 0;
+        const min = produto.estoqueMinimo || 0;
+        const valor = atual * (produto.precoCusto || 0);
+        valorTotalEstoque += valor;
+        
+        if (min > 0) {
+            if (atual <= 0) {
+                produtosCritico++;
+            } else if (atual <= min) {
+                produtosCritico++;
+            } else if (atual <= min * 1.3) {
+                produtosAlerta++;
+            } else {
+                produtosNormal++;
+            }
+        } else {
+            produtosNormal++;
+        }
+    });
+    
+    // Atualizar cards
+    document.getElementById('totalProdutos').innerText = produtos.length;
+    document.getElementById('produtosNormal').innerText = produtosNormal;
+    document.getElementById('produtosAlerta').innerText = produtosAlerta;
+    document.getElementById('produtosCritico').innerText = produtosCritico;
+    document.getElementById('valorTotalEstoque').innerHTML = `R$ ${valorTotalEstoque.toFixed(3)}`;
+    
+    // Giro de Estoque (itens movimentados nos últimos 30 dias)
+    await atualizarGiroEstoque();
+    
+    // Alertas de Estoque
+    atualizarAlertasEstoque();
+    
+    // Top Consumo
+    await atualizarTopConsumo();
+    
+    // Gráfico de Consumo por Categoria
+    await atualizarGraficoConsumo();
+    
+    // Resumo por Categoria
+    atualizarResumoCategorias();
+}
+
+// Atualizar giro de estoque
+async function atualizarGiroEstoque() {
+    if (typeof db === 'undefined') {
+        document.getElementById('giroEstoque').innerText = '0';
+        return;
+    }
+    
+    const hoje = new Date();
+    const trintaDiasAtras = new Date(hoje);
+    trintaDiasAtras.setDate(hoje.getDate() - 30);
+    
+    const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
+    let totalMovimentado = 0;
+    
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const dataMov = new Date(data.dataHora);
+        if (dataMov >= trintaDiasAtras) {
+            totalMovimentado += data.quantidade || 0;
+        }
+    });
+    
+    document.getElementById('giroEstoque').innerText = totalMovimentado.toFixed(0);
+}
+
+// Atualizar alertas de estoque
+function atualizarAlertasEstoque() {
+    const container = document.getElementById('alertasEstoque');
+    
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        container.innerHTML = '<div class="empty-message">Nenhum produto cadastrado</div>';
+        return;
+    }
+    
+    const alertas = produtos.filter(p => {
+        const min = p.estoqueMinimo || 0;
+        const atual = p.estoqueAtual || 0;
+        return min > 0 && atual <= min * 1.3;
+    });
+    
+    if (alertas.length === 0) {
+        container.innerHTML = '<div class="empty-message">✅ Todos os produtos com estoque adequado</div>';
+        return;
+    }
+    
+    // Ordenar por mais crítico
+    alertas.sort((a, b) => (a.estoqueAtual || 0) - (b.estoqueAtual || 0));
+    
+    container.innerHTML = alertas.map(p => {
+        const atual = p.estoqueAtual || 0;
+        const min = p.estoqueMinimo || 0;
+        const percentual = min > 0 ? (atual / min) * 100 : 100;
+        
+        let status = '';
+        let statusClass = '';
+        if (atual <= 0) {
+            status = 'ZERADO!';
+            statusClass = 'alerta-critico';
+        } else if (atual <= min) {
+            status = 'CRÍTICO';
+            statusClass = 'alerta-critico';
+        } else {
+            status = 'ALERTA';
+            statusClass = 'alerta-alerta';
+        }
+        
+        return `
+            <div class="alerta-item">
+                <div>
+                    <div class="alerta-produto">${p.nome}</div>
+                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(3)} ${p.unidade || 'UN'} | Mínimo: ${min.toFixed(3)}</div>
+                </div>
+                <span class="alerta-status ${statusClass}">${status}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Atualizar Top 5 Consumo
+async function atualizarTopConsumo() {
+    const container = document.getElementById('topConsumo');
+    
+    if (typeof db === 'undefined') {
+        container.innerHTML = '<div class="empty-message">Firebase não disponível</div>';
+        return;
+    }
+    
+    try {
+        const hoje = new Date();
+        const trintaDiasAtras = new Date(hoje);
+        trintaDiasAtras.setDate(hoje.getDate() - 30);
+        
+        const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
+        const saidas = [];
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const dataMov = new Date(data.dataHora);
+            if (dataMov >= trintaDiasAtras) {
+                saidas.push(data);
+            }
+        });
+        
+        if (saidas.length === 0) {
+            container.innerHTML = '<div class="empty-message">Nenhum consumo nos últimos 30 dias</div>';
+            return;
+        }
+        
+        // Agrupar por produto
+        const consumo = {};
+        saidas.forEach(s => {
+            const id = s.produtoId;
+            if (!consumo[id]) {
+                consumo[id] = {
+                    nome: s.produtoNome || id,
+                    quantidade: 0,
+                    unidade: 'UN'
+                };
+            }
+            consumo[id].quantidade += s.quantidade || 0;
+        });
+        
+        // Adicionar unidade
+        for (let id in consumo) {
+            const produto = produtos.find(p => p.id === id);
+            if (produto && produto.unidade) {
+                consumo[id].unidade = produto.unidade;
+            }
+        }
+        
+        // Converter e ordenar
+        let lista = Object.values(consumo);
+        lista.sort((a, b) => b.quantidade - a.quantidade);
+        lista = lista.slice(0, 5);
+        
+        const maxQtd = lista[0]?.quantidade || 1;
+        
+        container.innerHTML = lista.map(item => {
+            const percent = (item.quantidade / maxQtd) * 100;
+            return `
+                <div class="consumo-item">
+                    <div class="consumo-header">
+                        <span class="consumo-nome">${item.nome}</span>
+                        <span class="consumo-valor">${item.quantidade.toFixed(3)} ${item.unidade}</span>
+                    </div>
+                    <div class="consumo-bar">
+                        <div class="consumo-bar-fill" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Erro ao carregar top consumo:', error);
+        container.innerHTML = '<div class="empty-message">Erro ao carregar dados</div>';
+    }
+}
+
+// Atualizar gráfico de consumo por categoria
+async function atualizarGraficoConsumo() {
+    const ctx = document.getElementById('graficoConsumo').getContext('2d');
+    
+    if (typeof db === 'undefined') return;
+    
+    try {
+        const hoje = new Date();
+        const trintaDiasAtras = new Date(hoje);
+        trintaDiasAtras.setDate(hoje.getDate() - 30);
+        
+        const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
+        const saidas = [];
+        
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const dataMov = new Date(data.dataHora);
+            if (dataMov >= trintaDiasAtras) {
+                saidas.push(data);
+            }
+        });
+        
+        // Agrupar por categoria
+        const consumoPorCategoria = {};
+        
+        for (const saida of saidas) {
+            const produto = produtos.find(p => p.id === saida.produtoId);
+            const categoria = produto ? (produto.categoria || 'outros') : 'outros';
+            const nomeCategoria = getNomeCategoria(categoria);
+            
+            if (!consumoPorCategoria[nomeCategoria]) {
+                consumoPorCategoria[nomeCategoria] = 0;
+            }
+            consumoPorCategoria[nomeCategoria] += saida.quantidade || 0;
+        }
+        
+        const categorias = Object.keys(consumoPorCategoria);
+        const valores = Object.values(consumoPorCategoria);
+        
+        if (graficoConsumo) {
+            graficoConsumo.destroy();
+        }
+        
+        graficoConsumo = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categorias,
+                datasets: [{
+                    label: 'Quantidade Consumida (unidades)',
+                    data: valores,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw.toFixed(3)} unidades`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Quantidade Consumida'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Categorias'
+                        }
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Erro ao carregar gráfico:', error);
+    }
+}
+
+// Resumo por categoria
+function atualizarResumoCategorias() {
+    const container = document.getElementById('resumoCategorias');
+    
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        container.innerHTML = '<div class="empty-message">Nenhum produto cadastrado</div>';
+        return;
+    }
+    
+    const categorias = {};
+    produtos.forEach(produto => {
+        const categoria = produto.categoria || 'outros';
+        const nomeCategoria = getNomeCategoria(categoria);
+        if (!categorias[nomeCategoria]) {
+            categorias[nomeCategoria] = {
+                quantidade: 0,
+                valor: 0,
+                produtos: 0
+            };
+        }
+        categorias[nomeCategoria].quantidade += produto.estoqueAtual || 0;
+        categorias[nomeCategoria].valor += (produto.estoqueAtual || 0) * (produto.precoCusto || 0);
+        categorias[nomeCategoria].produtos++;
+    });
+    
+    container.innerHTML = Object.entries(categorias).map(([nome, dados]) => `
+        <div class="categoria-item">
+            <div class="categoria-nome">${nome}</div>
+            <div class="categoria-quantidade">${dados.quantidade.toFixed(0)} unidades</div>
+            <div class="categoria-valor">R$ ${dados.valor.toFixed(3)}</div>
+            <div class="categoria-valor" style="font-size: 11px;">${dados.produtos} produtos</div>
+        </div>
+    `).join('');
+}
+
+// Função auxiliar para nome da categoria
+function getNomeCategoria(categoria) {
+    const categorias = {
+        'alimentacao': '🍽️ Alimentação',
+        'bebidas': '🥤 Bebidas',
+        'limpeza': '🧹 Limpeza',
+        'higiene': '🚿 Higiene',
+        'outros': '📌 Outros'
+    };
+    return categorias[categoria] || categoria;
+}
+
+// Atualizar gráfico de boletos
+function atualizarGraficoBoletos(total, pagos, vencidos) {
+    const ctx = document.getElementById('graficoBoletos').getContext('2d');
+    const pendentes = total - pagos - vencidos;
+    
+    if (graficoBoletos) {
+        graficoBoletos.destroy();
+    }
+    
+    graficoBoletos = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pagos', 'Pendentes', 'Vencidos'],
+            datasets: [{
+                data: [pagos, pendentes, vencidos],
+                backgroundColor: ['#10b981', '#3b82f6', '#ef4444'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Atualizar alertas de estoque
+function atualizarAlertasEstoque() {
+    const container = document.getElementById('alertasEstoque');
+    
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        container.innerHTML = '<div class="empty-message">Nenhum produto cadastrado</div>';
+        return;
+    }
+    
+    const alertas = produtos.filter(p => {
+        const min = p.estoqueMinimo || 0;
+        const atual = p.estoqueAtual || 0;
+        return min > 0 && atual <= min;
+    });
+    
+    if (alertas.length === 0) {
+        container.innerHTML = '<div class="empty-message">✅ Todos os produtos com estoque adequado</div>';
+        return;
+    }
+    
+    // Ordenar por mais crítico
+    alertas.sort((a, b) => (a.estoqueAtual || 0) - (b.estoqueAtual || 0));
+    
+    container.innerHTML = alertas.map(p => {
+        const atual = p.estoqueAtual || 0;
+        const min = p.estoqueMinimo || 0;
+        const status = atual <= 0 ? 'ZERADO!' : 'CRÍTICO';
+        const statusClass = atual <= 0 ? 'alerta-critico' : 'alerta-critico';
+        
+        return `
+            <div class="alerta-item">
+                <div>
+                    <div class="alerta-produto">${p.nome}</div>
+                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(3)} ${p.unidade || 'UN'} / Mín: ${min.toFixed(3)}</div>
+                </div>
+                <span class="alerta-status ${statusClass}">${status}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Atualizar Top 5 Consumo
+async function atualizarTopConsumo() {
+    const container = document.getElementById('topConsumo');
+    
+    if (typeof db === 'undefined') {
+        container.innerHTML = '<div class="empty-message">Firebase não disponível</div>';
+        return;
+    }
+    
+    try {
+        // Buscar movimentações de saída dos últimos 30 dias
+        const hoje = new Date();
+        const trintaDiasAtras = new Date(hoje);
+        trintaDiasAtras.setDate(hoje.getDate() - 30);
+        
+        const snapshot = await db.collection('movimentacoes')
+            .where('tipo', '==', 'saida')
+            .get();
+        
+        const saidas = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const dataMov = new Date(data.dataHora);
+            if (dataMov >= trintaDiasAtras) {
+                saidas.push(data);
+            }
+        });
+        
+        if (saidas.length === 0) {
+            container.innerHTML = '<div class="empty-message">Nenhum consumo nos últimos 30 dias</div>';
+            return;
+        }
+        
+        // Agrupar por produto
+        const consumo = {};
+        saidas.forEach(s => {
+            const id = s.produtoId;
+            if (!consumo[id]) {
+                consumo[id] = {
+                    nome: s.produtoNome || id,
+                    quantidade: 0
+                };
+            }
+            consumo[id].quantidade += s.quantidade || 0;
+        });
+        
+        // Converter e ordenar
+        let lista = Object.values(consumo);
+        lista.sort((a, b) => b.quantidade - a.quantidade);
+        lista = lista.slice(0, 5);
+        
+        const maxQtd = lista[0]?.quantidade || 1;
+        
+        container.innerHTML = lista.map(item => {
+            const percent = (item.quantidade / maxQtd) * 100;
+            return `
+                <div class="consumo-item">
+                    <div class="consumo-header">
+                        <span class="consumo-nome">${item.nome}</span>
+                        <span class="consumo-valor">${item.quantidade.toFixed(3)} unidades</span>
+                    </div>
+                    <div class="consumo-bar">
+                        <div class="consumo-bar-fill" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Erro ao carregar top consumo:', error);
+        container.innerHTML = '<div class="empty-message">Erro ao carregar dados</div>';
+    }
+}
+
+// Atualizar próximos vencimentos
+function atualizarProximosVencimentos() {
+    const container = document.getElementById('proximosVencimentos');
+    
+    let todosBoletos = [];
+    for (let notaId in boletos) {
+        const nota = notas.find(n => n.id == notaId || n.firebaseId == notaId);
+        if (nota) {
+            boletos[notaId].forEach(b => {
+                if (!b.pago) {
+                    todosBoletos.push({
+                        ...b,
+                        fornecedor: nota.fornecedor,
+                        nfeNumero: nota.nfeNumero
+                    });
+                }
+            });
+        }
+    }
+    
+    if (todosBoletos.length === 0) {
+        container.innerHTML = '<div class="empty-message">✅ Nenhum boleto pendente</div>';
+        return;
+    }
+    
+    // Ordenar por data de vencimento
+    todosBoletos.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+    todosBoletos = todosBoletos.slice(0, 5);
+    
+    const hoje = new Date();
+    
+    container.innerHTML = todosBoletos.map(b => {
+        const venc = new Date(b.dataVencimento);
+        const diasDiff = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24));
+        
+        let diasClass = '';
+        let diasTexto = '';
+        if (diasDiff < 0) {
+            diasClass = 'dias-urgente';
+            diasTexto = `Vencido há ${Math.abs(diasDiff)} dias`;
+        } else if (diasDiff <= 3) {
+            diasClass = 'dias-urgente';
+            diasTexto = `Vence em ${diasDiff} dias`;
+        } else if (diasDiff <= 7) {
+            diasClass = 'dias-proximo';
+            diasTexto = `Vence em ${diasDiff} dias`;
+        } else {
+            diasClass = 'dias-normal';
+            diasTexto = `Vence em ${diasDiff} dias`;
+        }
+        
+        return `
+            <div class="vencimento-item">
+                <div>
+                    <div class="vencimento-fornecedor">${b.fornecedor}</div>
+                    <div class="vencimento-valor">NFe: ${b.nfeNumero} | R$ ${b.valor.toFixed(3)}</div>
+                </div>
+                <span class="vencimento-dias ${diasClass}">${diasTexto}</span>
+            </div>
+        `;
+    }).join('');
+}

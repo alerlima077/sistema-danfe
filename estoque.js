@@ -1197,7 +1197,9 @@ function inicializarEstoque() {
     carregarMovimentacoes();
     carregarInventarios();      // ⭐ NOVO: Carregar histórico de inventários
     configurarMovimentacoesListeners();
-    configurarInventarioListeners();  // ⭐ NOVO: Configurar listeners do inventário
+    configurarInventarioListeners(); 
+    configurarConsumoListeners();
+    configurarRelatorioListeners();  // ⭐ NOVO // ⭐ NOVO: Configurar listeners do inventário
 }
 
 // Expor funções globalmente
@@ -2150,5 +2152,559 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         console.log('✅ Listener do período configurado');
+    }
+});
+
+// ========== FUNÇÕES DOS RELATÓRIOS ==========
+
+// Gerar relatório
+async function gerarRelatorio() {
+    const tipo = document.getElementById('tipoRelatorio').value;
+    console.log('📊 Gerando relatório:', tipo);
+    
+    if (tipo === 'estoque') {
+        await gerarRelatorioEstoque();
+    } else if (tipo === 'consumo') {
+        await gerarRelatorioConsumo();
+    }
+}
+
+// Relatório de Estoque
+async function gerarRelatorioEstoque() {
+    console.log('📦 Gerando relatório de estoque...');
+    
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        document.getElementById('resultadoRelatorio').innerHTML = '<div class="empty-message">Nenhum produto cadastrado</div>';
+        return;
+    }
+    
+    // Classificar produtos por status do estoque
+    const produtosComEstoque = produtos.map(p => {
+        let status = '';
+        let statusClass = '';
+        const estoqueAtual = p.estoqueAtual || 0;
+        const estoqueMinimo = p.estoqueMinimo || 0;
+        
+        if (estoqueMinimo > 0) {
+            if (estoqueAtual <= 0) {
+                status = 'ZERADO';
+                statusClass = 'status-baixo';
+            } else if (estoqueAtual <= estoqueMinimo) {
+                status = 'BAIXO';
+                statusClass = 'status-baixo';
+            } else if (estoqueAtual <= estoqueMinimo * 1.5) {
+                status = 'MÉDIO';
+                statusClass = 'status-medio';
+            } else {
+                status = 'ALTO';
+                statusClass = 'status-alto';
+            }
+        } else {
+            status = 'SEM MÍNIMO';
+            statusClass = 'status-medio';
+        }
+        
+        return {
+            ...p,
+            status,
+            statusClass,
+            valorEstoque: (p.estoqueAtual || 0) * (p.precoCusto || 0)
+        };
+    });
+    
+    // Ordenar por produtos com estoque baixo primeiro
+    const ordemStatus = { 'ZERADO': 0, 'BAIXO': 1, 'MÉDIO': 2, 'ALTO': 3, 'SEM MÍNIMO': 4 };
+    produtosComEstoque.sort((a, b) => ordemStatus[a.status] - ordemStatus[b.status]);
+    
+    // Estatísticas
+    const totalProdutos = produtosComEstoque.length;
+    const produtosBaixo = produtosComEstoque.filter(p => p.status === 'BAIXO' || p.status === 'ZERADO').length;
+    const produtosMedio = produtosComEstoque.filter(p => p.status === 'MÉDIO').length;
+    const produtosAlto = produtosComEstoque.filter(p => p.status === 'ALTO').length;
+    const valorTotalEstoque = produtosComEstoque.reduce((sum, p) => sum + p.valorEstoque, 0);
+    
+    // HTML do relatório
+    const html = `
+        <div class="relatorio-titulo">📦 Relatório de Estoque</div>
+        <div class="relatorio-subtitulo">Situação atual dos produtos em estoque</div>
+        
+        <div class="resumo-relatorio">
+            <div class="resumo-item">
+                <span class="resumo-label">📊 Total de Produtos</span>
+                <span class="resumo-valor">${totalProdutos}</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">⚠️ Estoque Baixo/Zerado</span>
+                <span class="resumo-valor" style="color: #ef4444;">${produtosBaixo}</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">🟡 Estoque Médio</span>
+                <span class="resumo-valor" style="color: #f59e0b;">${produtosMedio}</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">🟢 Estoque Alto</span>
+                <span class="resumo-valor" style="color: #10b981;">${produtosAlto}</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">💰 Valor Total Estoque</span>
+                <span class="resumo-valor">R$ ${valorTotalEstoque.toFixed(3)}</span>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="tabela-relatorio">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Produto</th>
+                        <th>Estoque Atual</th>
+                        <th>Estoque Mínimo</th>
+                        <th>Status</th>
+                        <th>Valor Estoque</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${produtosComEstoque.map(p => `
+                        <tr>
+                            <td>${p.codigo || '-'}</span></td>
+                            <td><strong>${p.nome}</strong><br><small>${p.categoria || '-'}</small></td>
+                            <td>${(p.estoqueAtual || 0).toFixed(3)} ${p.unidade || 'UN'}</span></td>
+                            <td>${(p.estoqueMinimo || 0).toFixed(3)} ${p.unidade || 'UN'}</span></td>
+                            <td><span class="${p.statusClass}">${p.status}</span></td>
+                            <td>R$ ${p.valorEstoque.toFixed(3)}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('resultadoRelatorio').innerHTML = html;
+}
+
+// Relatório de Consumo - VERSÃO CORRIGIDA
+async function gerarRelatorioConsumo() {
+    console.log('📉 Gerando relatório de consumo...');
+    
+    // Obter período
+    const periodo = document.getElementById('periodoRelatorio').value;
+    const { dataInicio, dataFim, descricaoPeriodo } = calcularPeriodoRelatorio(periodo);
+    
+    console.log('Período:', descricaoPeriodo);
+    
+    if (typeof db === 'undefined') {
+        document.getElementById('resultadoRelatorio').innerHTML = '<div class="empty-message">Firebase não disponível</div>';
+        return;
+    }
+    
+    // Buscar movimentações de saída
+    const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
+    let saidas = [];
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        const dataMov = new Date(data.dataHora);
+        if (dataMov >= dataInicio && dataMov <= dataFim) {
+            saidas.push(data);
+        }
+    });
+    
+    if (saidas.length === 0) {
+        document.getElementById('resultadoRelatorio').innerHTML = `
+            <div class="relatorio-titulo">📉 Relatório de Consumo</div>
+            <div class="empty-message">Nenhum consumo registrado no período ${descricaoPeriodo}</div>
+        `;
+        return;
+    }
+    
+    // Agrupar por produto
+    const consumoPorProduto = {};
+    saidas.forEach(saida => {
+        const produtoId = saida.produtoId;
+        if (!consumoPorProduto[produtoId]) {
+            consumoPorProduto[produtoId] = {
+                id: produtoId,
+                nome: saida.produtoNome || produtoId,
+                quantidade: 0,
+                vezesConsumido: 0,
+                ultimoConsumo: saida.dataHora
+            };
+        }
+        consumoPorProduto[produtoId].quantidade += saida.quantidade || 0;
+        consumoPorProduto[produtoId].vezesConsumido++;
+        
+        if (new Date(saida.dataHora) > new Date(consumoPorProduto[produtoId].ultimoConsumo)) {
+            consumoPorProduto[produtoId].ultimoConsumo = saida.dataHora;
+        }
+    });
+    
+    // Converter para array e ordenar por quantidade consumida
+    let listaConsumo = Object.values(consumoPorProduto);
+    listaConsumo.sort((a, b) => b.quantidade - a.quantidade);
+    
+    // Adicionar unidade dos produtos
+    listaConsumo = listaConsumo.map(item => {
+        let unidade = 'UN';
+        if (typeof produtos !== 'undefined') {
+            const produto = produtos.find(p => p.id === item.id);
+            if (produto) unidade = produto.unidade || 'UN';
+        }
+        return { ...item, unidade };
+    });
+    
+    // Estatísticas
+    const totalConsumido = listaConsumo.reduce((sum, p) => sum + p.quantidade, 0);
+    const totalItensConsumidos = listaConsumo.length;
+    const mediaPorItem = totalConsumido / totalItensConsumidos;
+    const top3 = listaConsumo.slice(0, 3);
+    const topTexto = top3.map((p, i) => `${i+1}º - ${p.nome}: ${p.quantidade.toFixed(3)} ${p.unidade}`).join(' | ');
+    
+    // HTML do relatório
+    const html = `
+        <div class="relatorio-titulo">📉 Relatório de Consumo</div>
+        <div class="relatorio-subtitulo">Período: ${descricaoPeriodo}</div>
+        
+        <div class="resumo-relatorio">
+            <div class="resumo-item">
+                <span class="resumo-label">📊 Total Consumido</span>
+                <span class="resumo-valor">${totalConsumido.toFixed(3)} unidades</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">📦 Itens Consumidos</span>
+                <span class="resumo-valor">${totalItensConsumidos}</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">📈 Média por Item</span>
+                <span class="resumo-valor">${mediaPorItem.toFixed(3)} unid.</span>
+            </div>
+            <div class="resumo-item">
+                <span class="resumo-label">🏆 Top 3</span>
+                <span class="resumo-valor" style="font-size: 12px;">${topTexto}</span>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="tabela-relatorio">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Produto</th>
+                        <th>Quantidade</th>
+                        <th>Unidade</th>
+                        <th>Vezes</th>
+                        <th>Média/Uso</th>
+                        <th>Último Consumo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${listaConsumo.map((p, index) => `
+                        <tr>
+                            <td><strong>${index + 1}º</strong></td>
+                            <td><strong>${p.nome}</strong></td>
+                            <td>${p.quantidade.toFixed(3)}</span></td>
+                            <td>${p.unidade}</span></td>
+                            <td>${p.vezesConsumido} vez(es)</span></td>
+                            <td>${(p.quantidade / p.vezesConsumido).toFixed(3)}</span></td>
+                            <td>${new Date(p.ultimoConsumo).toLocaleDateString('pt-BR')}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('resultadoRelatorio').innerHTML = html;
+}
+
+// Calcular período do relatório
+function calcularPeriodoRelatorio(periodo) {
+    const hoje = new Date();
+    let dataInicio, dataFim, descricaoPeriodo;
+    
+    dataFim = new Date(hoje);
+    dataFim.setHours(23, 59, 59, 999);
+    
+    switch(periodo) {
+        case 'esteMes':
+            dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            dataInicio.setHours(0, 0, 0, 0);
+            descricaoPeriodo = `${dataInicio.toLocaleDateString('pt-BR')} a ${dataFim.toLocaleDateString('pt-BR')}`;
+            break;
+        case 'mesPassado':
+            dataInicio = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+            dataInicio.setHours(0, 0, 0, 0);
+            dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+            dataFim.setHours(23, 59, 59, 999);
+            descricaoPeriodo = `${dataInicio.toLocaleDateString('pt-BR')} a ${dataFim.toLocaleDateString('pt-BR')}`;
+            break;
+        case 'ultimos30':
+            dataInicio = new Date(hoje);
+            dataInicio.setDate(hoje.getDate() - 30);
+            dataInicio.setHours(0, 0, 0, 0);
+            descricaoPeriodo = `Últimos 30 dias (${dataInicio.toLocaleDateString('pt-BR')} a ${dataFim.toLocaleDateString('pt-BR')})`;
+            break;
+        case 'ultimos90':
+            dataInicio = new Date(hoje);
+            dataInicio.setDate(hoje.getDate() - 90);
+            dataInicio.setHours(0, 0, 0, 0);
+            descricaoPeriodo = `Últimos 90 dias (${dataInicio.toLocaleDateString('pt-BR')} a ${dataFim.toLocaleDateString('pt-BR')})`;
+            break;
+        case 'ano':
+            dataInicio = new Date(hoje.getFullYear(), 0, 1);
+            dataInicio.setHours(0, 0, 0, 0);
+            descricaoPeriodo = `Ano de ${hoje.getFullYear()}`;
+            break;
+        default:
+            dataInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            descricaoPeriodo = `Este Mês`;
+    }
+    
+    return { dataInicio, dataFim, descricaoPeriodo };
+}
+
+// Exportar relatório para Excel - VERSÃO MELHORADA
+function exportarRelatorio() {
+    const tipo = document.getElementById('tipoRelatorio').value;
+    const periodo = document.getElementById('periodoRelatorio')?.value || 'esteMes';
+    
+    let dadosExcel = [];
+    let nomeArquivo = '';
+    
+    if (tipo === 'estoque') {
+        nomeArquivo = `relatorio_estoque_${new Date().toISOString().split('T')[0]}`;
+        dadosExcel = gerarDadosExcelEstoque();
+    } else {
+        nomeArquivo = `relatorio_consumo_${new Date().toISOString().split('T')[0]}`;
+        dadosExcel = gerarDadosExcelConsumo(periodo);
+    }
+    
+    if (dadosExcel.length === 0) {
+        alert('Nenhum dado para exportar!');
+        return;
+    }
+    
+    // Converter para CSV com separador correto
+    const csv = dadosExcel.map(row => 
+        row.map(cell => {
+            // Escapar aspas e tratar valores
+            if (cell === null || cell === undefined) return '';
+            const cellStr = String(cell);
+            return `"${cellStr.replace(/"/g, '""')}"`;
+        }).join(',')
+    ).join('\n');
+    
+    // Adicionar BOM para caracteres especiais (acentos)
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = `${nomeArquivo}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    mostrarNotificacao('Relatório exportado com sucesso!', 'success');
+}
+
+// Gerar dados para Excel - Relatório de Estoque
+function gerarDadosExcelEstoque() {
+    const dados = [];
+    
+    // Cabeçalho principal
+    dados.push(['RELATÓRIO DE ESTOQUE']);
+    dados.push(['Data de geração:', new Date().toLocaleString('pt-BR')]);
+    dados.push([]);
+    
+    // Cabeçalho da tabela
+    dados.push(['CÓDIGO', 'PRODUTO', 'CATEGORIA', 'ESTOQUE ATUAL', 'UNIDADE', 'ESTOQUE MÍNIMO', 'STATUS', 'PREÇO CUSTO', 'VALOR ESTOQUE']);
+    
+    // Dados
+    if (typeof produtos !== 'undefined' && produtos.length > 0) {
+        produtos.forEach(produto => {
+            const estoqueAtual = produto.estoqueAtual || 0;
+            const estoqueMinimo = produto.estoqueMinimo || 0;
+            const precoCusto = produto.precoCusto || 0;
+            const valorEstoque = estoqueAtual * precoCusto;
+            
+            let status = '';
+            if (estoqueMinimo > 0) {
+                if (estoqueAtual <= 0) status = 'ZERADO';
+                else if (estoqueAtual <= estoqueMinimo) status = 'BAIXO';
+                else if (estoqueAtual <= estoqueMinimo * 1.5) status = 'MÉDIO';
+                else status = 'ALTO';
+            } else {
+                status = 'SEM MÍNIMO';
+            }
+            
+            dados.push([
+                produto.codigo || '-',
+                produto.nome || '-',
+                produto.categoria || '-',
+                estoqueAtual.toFixed(3),
+                produto.unidade || 'UN',
+                estoqueMinimo.toFixed(3),
+                status,
+                `R$ ${precoCusto.toFixed(3)}`,
+                `R$ ${valorEstoque.toFixed(3)}`
+            ]);
+        });
+    }
+    
+    // Resumo final
+    if (dados.length > 3) {
+        const totalProdutos = produtos.length;
+        const totalValorEstoque = produtos.reduce((sum, p) => sum + ((p.estoqueAtual || 0) * (p.precoCusto || 0)), 0);
+        
+        dados.push([]);
+        dados.push(['RESUMO', '', '', '', '', '', '', '', '']);
+        dados.push(['Total de Produtos:', totalProdutos, '', '', '', '', '', '', '']);
+        dados.push(['Valor Total do Estoque:', `R$ ${totalValorEstoque.toFixed(3)}`, '', '', '', '', '', '', '']);
+    }
+    
+    return dados;
+}
+
+// Gerar dados para Excel - Relatório de Consumo
+async function gerarDadosExcelConsumo(periodo) {
+    const dados = [];
+    const { dataInicio, dataFim, descricaoPeriodo } = calcularPeriodoRelatorio(periodo);
+    
+    // Cabeçalho principal
+    dados.push(['RELATÓRIO DE CONSUMO']);
+    dados.push(['Período:', descricaoPeriodo]);
+    dados.push(['Data de geração:', new Date().toLocaleString('pt-BR')]);
+    dados.push([]);
+    
+    // Buscar movimentações de saída
+    if (typeof db !== 'undefined') {
+        const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
+        let saidas = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const dataMov = new Date(data.dataHora);
+            if (dataMov >= dataInicio && dataMov <= dataFim) {
+                saidas.push(data);
+            }
+        });
+        
+        if (saidas.length > 0) {
+            // Agrupar por produto
+            const consumoPorProduto = {};
+            saidas.forEach(saida => {
+                const produtoId = saida.produtoId;
+                if (!consumoPorProduto[produtoId]) {
+                    consumoPorProduto[produtoId] = {
+                        nome: saida.produtoNome || produtoId,
+                        quantidade: 0,
+                        vezesConsumido: 0
+                    };
+                }
+                consumoPorProduto[produtoId].quantidade += saida.quantidade || 0;
+                consumoPorProduto[produtoId].vezesConsumido++;
+            });
+            
+            // Converter para array e ordenar
+            let listaConsumo = Object.values(consumoPorProduto);
+            listaConsumo.sort((a, b) => b.quantidade - a.quantidade);
+            
+            // Adicionar unidade
+            listaConsumo = listaConsumo.map(item => {
+                let unidade = 'UN';
+                if (typeof produtos !== 'undefined') {
+                    const produto = produtos.find(p => p.id === item.id);
+                    if (produto) unidade = produto.unidade || 'UN';
+                }
+                return { ...item, unidade };
+            });
+            
+            // Cabeçalho da tabela
+            dados.push(['POSIÇÃO', 'PRODUTO', 'QUANTIDADE CONSUMIDA', 'UNIDADE', 'VEZES CONSUMIDO', 'MÉDIA POR USO']);
+            
+            // Dados
+            listaConsumo.forEach((item, index) => {
+                dados.push([
+                    `${index + 1}º`,
+                    item.nome,
+                    item.quantidade.toFixed(3),
+                    item.unidade,
+                    item.vezesConsumido,
+                    (item.quantidade / item.vezesConsumido).toFixed(3)
+                ]);
+            });
+            
+            // Resumo final
+            const totalConsumido = listaConsumo.reduce((sum, p) => sum + p.quantidade, 0);
+            const totalItens = listaConsumo.length;
+            
+            dados.push([]);
+            dados.push(['RESUMO', '', '', '', '', '']);
+            dados.push(['Total de itens consumidos:', totalItens]);
+            dados.push(['Quantidade total consumida:', `${totalConsumido.toFixed(3)} unidades`]);
+            
+        } else {
+            dados.push(['Nenhum consumo registrado no período selecionado']);
+        }
+    }
+    
+    return dados;
+}
+
+// Configurar event listeners dos relatórios
+function configurarRelatorioListeners() {
+    const gerarBtn = document.getElementById('gerarRelatorioBtn');
+    if (gerarBtn) {
+        const novoBtn = gerarBtn.cloneNode(true);
+        gerarBtn.parentNode.replaceChild(novoBtn, gerarBtn);
+        novoBtn.addEventListener('click', gerarRelatorio);
+    }
+    
+    const exportarBtn = document.getElementById('exportarRelatorioBtn');
+    if (exportarBtn) {
+        const novoExportar = exportarBtn.cloneNode(true);
+        exportarBtn.parentNode.replaceChild(novoExportar, exportarBtn);
+        novoExportar.addEventListener('click', exportarRelatorio);
+    }
+}
+
+// ========== CONFIGURAÇÃO FORÇADA DOS BOTÕES DE RELATÓRIO ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Configurando botões de relatório...');
+    
+    // Botão Gerar Relatório
+    const gerarBtn = document.getElementById('gerarRelatorioBtn');
+    if (gerarBtn) {
+        const novoGerar = gerarBtn.cloneNode(true);
+        gerarBtn.parentNode.replaceChild(novoGerar, gerarBtn);
+        novoGerar.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Gerar Relatório CLICADO!');
+            if (typeof gerarRelatorio === 'function') {
+                gerarRelatorio();
+            } else {
+                console.error('Função gerarRelatorio não encontrada');
+            }
+        });
+        console.log('✅ Botão Gerar Relatório configurado');
+    } else {
+        console.log('❌ Botão gerarRelatorioBtn não encontrado');
+    }
+    
+    // Botão Exportar Relatório
+    const exportarBtn = document.getElementById('exportarRelatorioBtn');
+    if (exportarBtn) {
+        const novoExportar = exportarBtn.cloneNode(true);
+        exportarBtn.parentNode.replaceChild(novoExportar, exportarBtn);
+        novoExportar.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Exportar Relatório CLICADO!');
+            if (typeof exportarRelatorio === 'function') {
+                exportarRelatorio();
+            } else {
+                console.error('Função exportarRelatorio não encontrada');
+            }
+        });
+        console.log('✅ Botão Exportar Relatório configurado');
+    } else {
+        console.log('❌ Botão exportarRelatorioBtn não encontrado');
     }
 });

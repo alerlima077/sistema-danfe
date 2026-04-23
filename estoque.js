@@ -966,34 +966,78 @@ function inicializarFormularioProduto() {
 
 // Configurar event listeners do inventário
 function configurarInventarioListeners() {
+    console.log('Configurando listeners do inventário...');
+    
     const novaContagemBtn = document.getElementById('novaContagemBtn');
     if (novaContagemBtn) {
-        novaContagemBtn.addEventListener('click', () => {
-            toggleFormContagem(true);
+        // Remover event listeners antigos
+        const novoBotao = novaContagemBtn.cloneNode(true);
+        novaContagemBtn.parentNode.replaceChild(novoBotao, novaContagemBtn);
+        
+        novoBotao.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Botão Nova Contagem clicado!');
+            const formContagem = document.getElementById('formContagem');
+            if (formContagem) {
+                formContagem.style.display = 'block';
+                // Limpar formulário ao abrir
+                document.getElementById('contagemProduto').value = '';
+                document.getElementById('quantidadeSistema').value = '';
+                document.getElementById('quantidadeContada').value = '';
+                document.getElementById('diferencaContagem').value = '';
+                document.getElementById('observacaoContagem').value = '';
+            } else {
+                console.error('Formulário formContagem não encontrado!');
+            }
         });
+    } else {
+        console.error('Botão novaContagemBtn não encontrado!');
     }
     
     const cancelarContagemBtn = document.getElementById('cancelarContagemBtn');
     if (cancelarContagemBtn) {
-        cancelarContagemBtn.addEventListener('click', () => {
-            toggleFormContagem(false);
+        const novoCancelar = cancelarContagemBtn.cloneNode(true);
+        cancelarContagemBtn.parentNode.replaceChild(novoCancelar, cancelarContagemBtn);
+        
+        novoCancelar.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Cancelar clicado');
+            const formContagem = document.getElementById('formContagem');
+            if (formContagem) {
+                formContagem.style.display = 'none';
+            }
         });
     }
     
     const salvarContagemBtn = document.getElementById('salvarContagemBtn');
     if (salvarContagemBtn) {
-        salvarContagemBtn.addEventListener('click', salvarContagem);
+        const novoSalvar = salvarContagemBtn.cloneNode(true);
+        salvarContagemBtn.parentNode.replaceChild(novoSalvar, salvarContagemBtn);
+        
+        novoSalvar.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Salvar contagem clicado');
+            salvarContagem();
+        });
     }
     
     const contagemProduto = document.getElementById('contagemProduto');
     if (contagemProduto) {
-        contagemProduto.addEventListener('change', carregarQuantidadeSistema);
+        contagemProduto.addEventListener('change', function() {
+            console.log('Produto selecionado:', this.value);
+            carregarQuantidadeSistema();
+        });
     }
     
     const quantidadeContada = document.getElementById('quantidadeContada');
     if (quantidadeContada) {
-        quantidadeContada.addEventListener('input', calcularDiferenca);
+        quantidadeContada.addEventListener('input', function() {
+            console.log('Quantidade contada alterada:', this.value);
+            calcularDiferenca();
+        });
     }
+    
+    console.log('Listeners do inventário configurados!');
 }
 
 // Chamar inicialização quando a página de estoque for carregada

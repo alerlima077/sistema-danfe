@@ -279,7 +279,7 @@ async function salvarMovimentacao(movimentacao) {
     return await registrarMovimentacao(movimentacao);
 }
 
-// Carregar movimentações do Firebase - VERSÃO CORRIGIDA
+// Carregar movimentações do Firebase
 async function carregarMovimentacoes(filtros = {}) {
     if (typeof db === 'undefined') {
         console.log('Firebase não disponível');
@@ -287,50 +287,54 @@ async function carregarMovimentacoes(filtros = {}) {
     }
     
     try {
-        console.log('Carregando movimentações com filtros:', filtros);
+        console.log('🔄 Carregando movimentações com filtros:', filtros);
         
-        let query = db.collection('movimentacoes').orderBy('dataHora', 'desc');
-        
-        // Aplicar filtro por data (necessita de índices compostos no Firebase)
-        // Para simplificar, vamos filtrar no frontend
-        const snapshot = await query.get();
-        let movimentacoesLista = [];
+        // Buscar todas movimentações
+        const snapshot = await db.collection('movimentacoes').orderBy('dataHora', 'desc').get();
+        let todasMovimentacoes = [];
         
         snapshot.forEach(doc => {
-            movimentacoesLista.push({ id: doc.id, ...doc.data() });
+            todasMovimentacoes.push({ id: doc.id, ...doc.data() });
         });
         
-        // Filtrar por data (no frontend)
-        if (filtros.dataInicio) {
+        console.log(`📦 Total de movimentações: ${todasMovimentacoes.length}`);
+        
+        // Aplicar filtros manualmente (frontend)
+        let movimentacoesFiltradas = [...todasMovimentacoes];
+        
+        // Filtrar por data de início
+        if (filtros.dataInicio && filtros.dataInicio !== '') {
             const dataInicioObj = new Date(filtros.dataInicio);
             dataInicioObj.setHours(0, 0, 0, 0);
-            movimentacoesLista = movimentacoesLista.filter(mov => {
+            movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
                 const movData = new Date(mov.dataHora);
                 return movData >= dataInicioObj;
             });
+            console.log(`📅 Filtro data início: ${movimentacoesFiltradas.length} movimentações`);
         }
         
-        if (filtros.dataFim) {
+        // Filtrar por data de fim
+        if (filtros.dataFim && filtros.dataFim !== '') {
             const dataFimObj = new Date(filtros.dataFim);
             dataFimObj.setHours(23, 59, 59, 999);
-            movimentacoesLista = movimentacoesLista.filter(mov => {
+            movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
                 const movData = new Date(mov.dataHora);
                 return movData <= dataFimObj;
             });
+            console.log(`📅 Filtro data fim: ${movimentacoesFiltradas.length} movimentações`);
         }
         
         // Filtrar por produto
-        if (filtros.produtoId && filtros.produtoId !== 'todos') {
-            movimentacoesLista = movimentacoesLista.filter(mov => mov.produtoId === filtros.produtoId);
+        if (filtros.produtoId && filtros.produtoId !== 'todos' && filtros.produtoId !== '') {
+            movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => mov.produtoId === filtros.produtoId);
+            console.log(`📦 Filtro produto: ${movimentacoesFiltradas.length} movimentações`);
         }
         
-        movimentacoes = movimentacoesLista;
-        console.log(`${movimentacoes.length} movimentações carregadas após filtros`);
-        
+        movimentacoes = movimentacoesFiltradas;
         renderizarMovimentacoes();
         
     } catch (error) {
-        console.error('Erro ao carregar movimentações:', error);
+        console.error('❌ Erro ao carregar movimentações:', error);
         mostrarNotificacao('Erro ao carregar movimentações!', 'error');
     }
 }
@@ -387,18 +391,52 @@ function filtrarMovimentacoes() {
     carregarMovimentacoes({ dataInicio, dataFim, produtoId });
 }
 
+// Limpar filtros de movimentações
+function limparFiltrosMovimentacoes() {
+    console.log('🧹 Limpando filtros...');
+    const dataInicioInput = document.getElementById('movDataInicio');
+    const dataFimInput = document.getElementById('movDataFim');
+    const produtoSelect = document.getElementById('movProdutoFiltro');
+    
+    if (dataInicioInput) dataInicioInput.value = '';
+    if (dataFimInput) dataFimInput.value = '';
+    if (produtoSelect) produtoSelect.value = 'todos';
+    
+    carregarMovimentacoes({});
+    mostrarNotificacao('Filtros limpos!', 'info');
+}
+
 // Configurar event listeners das movimentações
 function configurarMovimentacoesListeners() {
+    console.log('⚙️ Configurando listeners de movimentações...');
+    
     const filtrarBtn = document.getElementById('filtrarMovimentacoesBtn');
     if (filtrarBtn) {
-        console.log('Configurando botão filtrar movimentações');
-        filtrarBtn.addEventListener('click', function(e) {
+        // Remover qualquer event listener anterior usando onclick
+        filtrarBtn.onclick = null;
+        
+        // Adicionar novo event listener
+        filtrarBtn.onclick = function(e) {
             e.preventDefault();
-            console.log('Botão Filtrar clicado!');
+            e.stopPropagation();
+            console.log('👉 Botão Filtrar clicado!');
             filtrarMovimentacoes();
-        });
+        };
+        console.log('✅ Botão Filtrar configurado com onclick');
     } else {
-        console.log('Botão filtrarMovimentacoesBtn não encontrado');
+        console.log('❌ Botão filtrarMovimentacoesBtn não encontrado!');
+    }
+    
+    const limparFiltrosBtn = document.getElementById('limparFiltrosBtn');
+    if (limparFiltrosBtn) {
+        limparFiltrosBtn.onclick = null;
+        limparFiltrosBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Limpar Filtros clicado!');
+            limparFiltrosMovimentacoes();
+        };
+        console.log('✅ Botão Limpar Filtros configurado com onclick');
     }
 }
 

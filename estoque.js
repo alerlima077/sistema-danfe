@@ -1081,9 +1081,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const produtoId = selectProduto.value;
         console.log('Produto selecionado ID:', produtoId);
         
-        if (produtoId && window.produtos) {
-            const produto = window.produtos.find(p => p.id === produtoId);
+        // Tentar acessar produtos de diferentes formas
+        let produtosLista = null;
+        
+        if (typeof produtos !== 'undefined') {
+            produtosLista = produtos;
+            console.log('Usando variável produtos (global)');
+        } else if (window.produtos) {
+            produtosLista = window.produtos;
+            console.log('Usando window.produtos');
+        } else {
+            console.log('Variável produtos não encontrada!');
+        }
+        
+        if (produtoId && produtosLista) {
+            const produto = produtosLista.find(p => p.id === produtoId);
             console.log('Produto encontrado:', produto);
+            
             if (produto) {
                 const qtd = produto.estoqueAtual || 0;
                 const unidade = produto.unidade || 'UN';
@@ -1091,11 +1105,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 qtdSistema.setAttribute('data-valor', qtd);
                 console.log('Quantidade sistema carregada:', qtd);
             } else {
-                console.log('Produto não encontrado no array produtos');
+                console.log('Produto não encontrado no array');
+                qtdSistema.value = 'Produto não encontrado';
             }
         } else {
+            console.log('Sem produto selecionado ou produtos não carregados');
             qtdSistema.value = '';
-            qtdSistema.removeAttribute('data-valor');
         }
         calcularDiferencaTeste();
     }
@@ -1117,20 +1132,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Configurar eventos
+    // Função para popular o select de produtos
+    function popularSelectProdutos() {
+        let produtosLista = null;
+        
+        if (typeof produtos !== 'undefined') {
+            produtosLista = produtos;
+        } else if (window.produtos) {
+            produtosLista = window.produtos;
+        }
+        
+        if (selectProduto && produtosLista && produtosLista.length > 0) {
+            console.log('Populando select com', produtosLista.length, 'produtos');
+            selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
+            produtosLista.forEach(produto => {
+                const estoqueAtual = (produto.estoqueAtual || 0).toFixed(3);
+                selectProduto.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${estoqueAtual} ${produto.unidade || 'UN'})</option>`;
+            });
+        } else {
+            console.log('Aguardando produtos carregarem...');
+            // Tentar novamente após 1 segundo
+            setTimeout(popularSelectProdutos, 1000);
+        }
+    }
+    
+    // Configurar eventos do botão Nova Contagem
     if (btnNovaContagem && formContagem) {
         btnNovaContagem.onclick = function() {
+            console.log('Botão Nova Contagem clicado!');
             formContagem.style.display = 'block';
-            // Carregar produtos no select
-            if (selectProduto && window.produtos) {
-                selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
-                window.produtos.forEach(produto => {
-                    selectProduto.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'})</option>`;
-                });
-            }
+            popularSelectProdutos();
         };
     }
     
+    // Configurar eventos do select e inputs
     if (selectProduto) {
         selectProduto.addEventListener('change', carregarQuantidadeSistemaTeste);
     }
@@ -1139,10 +1174,46 @@ document.addEventListener('DOMContentLoaded', function() {
         qtdContada.addEventListener('input', calcularDiferencaTeste);
     }
     
+    // Configurar botão cancelar
+    const cancelarBtn = document.getElementById('cancelarContagemBtn');
+    if (cancelarBtn) {
+        cancelarBtn.onclick = function() {
+            formContagem.style.display = 'none';
+            selectProduto.value = '';
+            qtdSistema.value = '';
+            qtdContada.value = '';
+            diferenca.value = '';
+        };
+    }
+    
+    // Configurar botão salvar
+    const salvarBtn = document.getElementById('salvarContagemBtn');
+    if (salvarBtn) {
+        salvarBtn.onclick = function() {
+            console.log('Salvar contagem clicado');
+            const produtoId = selectProduto.value;
+            const quantidadeContada = parseFloat(qtdContada.value);
+            const observacao = document.getElementById('observacaoContagem').value;
+            
+            if (!produtoId) {
+                alert('Selecione um produto!');
+                return;
+            }
+            
+            if (isNaN(quantidadeContada) || quantidadeContada <= 0) {
+                alert('Digite uma quantidade válida!');
+                return;
+            }
+            
+            alert(`Produto: ${selectProduto.options[selectProduto.selectedIndex]?.text}\nQuantidade contada: ${quantidadeContada}\nObservação: ${observacao || 'Nenhuma'}\n\n(Função de salvar será implementada em breve)`);
+        };
+    }
+    
     // Expor funções globalmente para debug
     window.carregarQtdTeste = carregarQuantidadeSistemaTeste;
     window.calcularDiffTeste = calcularDiferencaTeste;
+    window.popularSelectTeste = popularSelectProdutos;
     
     console.log('=== TESTE CONFIGURADO ===');
-    console.log('Selecione um produto e veja se a quantidade sistema aparece!');
+    console.log('Clique em "Nova Contagem" e selecione um produto!');
 });

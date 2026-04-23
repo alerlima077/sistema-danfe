@@ -296,6 +296,24 @@ body.logged-out .app-container {
     padding: 20px;
 }
 
+.btn-notas {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-notas:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59,130,246,0.3);
+    background: #2563eb;
+}
+
 /* Alertas de Estoque */
 .alertas-lista, .top-consumo-lista {
     max-height: 350px;
@@ -2541,4 +2559,44 @@ body {
         flex-direction: column;
         gap: 10px;
     }
+}
+
+/* ========== FORÇAR LETRAS MAIÚSCULAS EM TODOS OS CAMPOS ========== */
+
+/* Campos de texto em geral */
+input[type="text"],
+input[type="tel"],
+input[type="password"],
+textarea,
+select,
+.produto-descricao,
+.item-descricao,
+#descricaoPagamento,
+#estabelecimento,
+#fornecedor,
+#endereco,
+#nfeNumero,
+#produtoCodigo,
+#produtoNome,
+#observacaoContagem,
+#observacaoContagem,
+.edit_codigo,
+.edit_nome,
+.edit_endereco,
+.edit_telefone,
+.edit_descricao {
+    text-transform: uppercase;
+}
+
+/* Placeholders também em maiúsculo, mas mantendo o estilo */
+input::placeholder,
+textarea::placeholder {
+    text-transform: none;
+    font-style: italic;
+}
+
+/* Exceção: campos de email e senha (manter como estão) */
+input[type="email"],
+input[type="password"] {
+    text-transform: none;
 }

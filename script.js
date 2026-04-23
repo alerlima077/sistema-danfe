@@ -2626,3 +2626,22 @@ function atualizarProximosVencimentos() {
         `;
     }).join('');
 }
+
+// Apenas a parte de correção para campos colados
+function corrigirMaiusculasAoColar() {
+    const campos = document.querySelectorAll('input[type="text"], input[type="tel"], textarea');
+    
+    campos.forEach(campo => {
+        campo.addEventListener('paste', function(e) {
+            setTimeout(() => {
+                if (this.value !== this.value.toUpperCase()) {
+                    this.value = this.value.toUpperCase();
+                }
+            }, 10);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    corrigirMaiusculasAoColar();
+});

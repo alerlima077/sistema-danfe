@@ -28,6 +28,22 @@ async function carregarProdutos() {
     }
 }
 
+// Carregar inventários do Firebase
+async function carregarInventarios() {
+    if (typeof db === 'undefined') return;
+    
+    try {
+        const snapshot = await db.collection('inventarios').orderBy('dataInventario', 'desc').get();
+        inventarios = [];
+        snapshot.forEach(doc => {
+            inventarios.push({ id: doc.id, ...doc.data() });
+        });
+        renderizarInventarios();
+    } catch (error) {
+        console.error('Erro ao carregar inventários:', error);
+    }
+}
+
 // Salvar produto no Firebase
 async function salvarProdutoFirebase(produto) {
     if (typeof db !== 'undefined') {
@@ -44,6 +60,21 @@ async function salvarProdutoFirebase(produto) {
         console.log('Firebase não disponível');
         return null;
     }
+}
+
+// Salvar inventário no Firebase
+async function salvarInventarioFirebase(inventario) {
+    if (typeof db !== 'undefined') {
+        try {
+            const docRef = await db.collection('inventarios').add(inventario);
+            console.log('Inventário salvo com ID:', docRef.id);
+            return docRef.id;
+        } catch (error) {
+            console.error('Erro ao salvar inventário:', error);
+            throw error;
+        }
+    }
+    return null;
 }
 
 // Atualizar produto no Firebase
@@ -67,6 +98,19 @@ async function excluirProdutoFirebase(produtoId) {
             console.log('Produto excluído');
         } catch (error) {
             console.error('Erro ao excluir produto:', error);
+            throw error;
+        }
+    }
+}
+
+// Excluir inventário do Firebase
+async function excluirInventarioFirebase(inventarioId) {
+    if (typeof db !== 'undefined') {
+        try {
+            await db.collection('inventarios').doc(inventarioId).delete();
+            console.log('Inventário excluído');
+        } catch (error) {
+            console.error('Erro ao excluir inventário:', error);
             throw error;
         }
     }
@@ -320,6 +364,191 @@ function configurarMovimentacoesListeners() {
     }
 }
 
+// ========== FUNÇÕES DA TELA DE CONTAGEM ==========
+
+// Mostrar/esconder formulário de contagem
+function toggleFormContagem(mostrar) {
+    const formContagem = document.getElementById('formContagem');
+    if (formContagem) {
+        formContagem.style.display = mostrar ? 'block' : 'none';
+    }
+    if (!mostrar) {
+        // Limpar formulário
+        document.getElementById('contagemProduto').value = '';
+        document.getElementById('quantidadeSistema').value = '';
+        document.getElementById('quantidadeContada').value = '';
+        document.getElementById('diferencaContagem').value = '';
+        document.getElementById('observacaoContagem').value = '';
+    }
+}
+
+// Carregar quantidade do sistema quando produto for selecionado
+function carregarQuantidadeSistema() {
+    const produtoId = document.getElementById('contagemProduto').value;
+    const quantidadeSistemaInput = document.getElementById('quantidadeSistema');
+    
+    if (produtoId) {
+        const produto = produtos.find(p => p.id === produtoId);
+        if (produto) {
+            quantidadeSistemaInput.value = `${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'}`;
+            // Armazenar o valor numérico para cálculo
+            quantidadeSistemaInput.setAttribute('data-valor', produto.estoqueAtual || 0);
+        }
+    } else {
+        quantidadeSistemaInput.value = '';
+        quantidadeSistemaInput.removeAttribute('data-valor');
+    }
+    calcularDiferenca();
+}
+
+// Calcular diferença entre sistema e contado
+function calcularDiferenca() {
+    const quantidadeContada = parseFloat(document.getElementById('quantidadeContada').value) || 0;
+    const quantidadeSistema = parseFloat(document.getElementById('quantidadeSistema')?.getAttribute('data-valor')) || 0;
+    const diferenca = quantidadeContada - quantidadeSistema;
+    const diferencaInput = document.getElementById('diferencaContagem');
+    
+    if (diferencaInput) {
+        diferencaInput.value = `${diferenca > 0 ? '+' : ''}${diferenca.toFixed(3)}`;
+        
+        // Aplicar classe de cor
+        if (diferenca > 0) {
+            diferencaInput.className = 'diferenca-positiva';
+        } else if (diferenca < 0) {
+            diferencaInput.className = 'diferenca-negativa';
+        } else {
+            diferencaInput.className = 'diferenca-zero';
+        }
+    }
+    
+    return diferenca;
+}
+
+// Salvar contagem
+async function salvarContagem() {
+    const produtoId = document.getElementById('contagemProduto').value;
+    const quantidadeContada = parseFloat(document.getElementById('quantidadeContada').value);
+    const observacao = document.getElementById('observacaoContagem').value;
+    
+    if (!produtoId) {
+        alert('Selecione um produto!');
+        return;
+    }
+    
+    if (isNaN(quantidadeContada) || quantidadeContada < 0) {
+        alert('Digite uma quantidade válida!');
+        return;
+    }
+    
+    const produto = produtos.find(p => p.id === produtoId);
+    if (!produto) return;
+    
+    const quantidadeSistema = produto.estoqueAtual || 0;
+    const diferenca = quantidadeContada - quantidadeSistema;
+    
+    // Confirmar se a diferença é significativa
+    if (Math.abs(diferenca) > 0) {
+        const mensagem = diferenca > 0 
+            ? `📈 Aumento de ${diferenca.toFixed(3)} ${produto.unidade}\nO estoque será ajustado para ${quantidadeContada.toFixed(3)} ${produto.unidade}\n\nDeseja continuar?`
+            : `📉 Diminuição de ${Math.abs(diferenca).toFixed(3)} ${produto.unidade}\nO estoque será ajustado para ${quantidadeContada.toFixed(3)} ${produto.unidade}\n\nDeseja continuar?`;
+        
+        if (!confirm(mensagem)) {
+            return;
+        }
+    }
+    
+    try {
+        // Atualizar estoque do produto
+        await atualizarProdutoFirebase(produtoId, { estoqueAtual: quantidadeContada });
+        
+        // Registrar inventário
+        const inventario = {
+            produtoId: produtoId,
+            produtoNome: produto.nome,
+            produtoCodigo: produto.codigo,
+            unidade: produto.unidade,
+            quantidadeSistema: quantidadeSistema,
+            quantidadeContada: quantidadeContada,
+            diferenca: diferenca,
+            observacao: observacao || (diferenca === 0 ? 'Contagem conferida' : diferenca > 0 ? 'Ajuste positivo' : 'Ajuste negativo'),
+            dataInventario: new Date().toISOString(),
+            usuario: 'admin'
+        };
+        
+        await salvarInventarioFirebase(inventario);
+        
+        // Registrar movimentação
+        if (diferenca !== 0) {
+            await registrarMovimentacao({
+                produtoId: produtoId,
+                produtoNome: produto.nome,
+                tipo: diferenca > 0 ? 'entrada' : 'saida',
+                quantidade: Math.abs(diferenca),
+                motivo: 'inventario',
+                observacao: observacao,
+                dataHora: new Date().toISOString(),
+                usuario: 'admin'
+            });
+        }
+        
+        // Recarregar dados
+        await carregarProdutos();
+        await carregarInventarios();
+        
+        // Limpar e fechar formulário
+        toggleFormContagem(false);
+        
+        mostrarNotificacao(`Contagem finalizada! ${diferenca !== 0 ? `Estoque ajustado em ${diferenca.toFixed(3)} ${produto.unidade}` : 'Estoque conferido'}`, 'success');
+        
+    } catch (error) {
+        console.error('Erro ao salvar contagem:', error);
+        mostrarNotificacao('Erro ao salvar contagem!', 'error');
+    }
+}
+
+// Renderizar inventários na tabela
+function renderizarInventarios() {
+    const tbody = document.getElementById('inventarioTableBody');
+    if (!tbody) return;
+    
+    if (inventarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-message">Nenhuma contagem registrada</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = inventarios.map(inv => {
+        const diferencaClass = inv.diferenca > 0 ? 'diferenca-positiva' : (inv.diferenca < 0 ? 'diferenca-negativa' : 'diferenca-zero');
+        const diferencaSinal = inv.diferenca > 0 ? '+' : '';
+        
+        return `
+            <tr>
+                <td>${formatarDataHora(inv.dataInventario)}</td>
+                <td><strong>${inv.produtoNome}</strong><br><small>${inv.produtoCodigo || '-'}</small></td>
+                <td>${inv.quantidadeSistema.toFixed(3)} ${inv.unidade}</td>
+                <td>${inv.quantidadeContada.toFixed(3)} ${inv.unidade}</td>
+                <td><span class="${diferencaClass}">${diferencaSinal}${inv.diferenca.toFixed(3)} ${inv.unidade}</span></td>
+                <td>${inv.observacao || '-'}</td>
+                <td>
+                    <button class="btn-delete" onclick="excluirInventario('${inv.id}')" title="Excluir">🗑️</button>
+                 </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Excluir inventário
+window.excluirInventario = async function(inventarioId) {
+    if (confirm('Excluir este registro de contagem? Isso não afetará o estoque atual.')) {
+        try {
+            await excluirInventarioFirebase(inventarioId);
+            await carregarInventarios();
+            mostrarNotificacao('Registro excluído!', 'success');
+        } catch (error) {
+            mostrarNotificacao('Erro ao excluir!', 'error');
+        }
+    }
+};
+
 // ========== RENDERIZAÇÃO DA TABELA DE PRODUTOS COM CORES NO ESTOQUE ==========
 
 function renderizarProdutos() {
@@ -408,7 +637,7 @@ function atualizarSelectsProdutos() {
     if (selectContagem) {
         selectContagem.innerHTML = '<option value="">Selecione um produto</option>';
         produtos.forEach(produto => {
-            selectContagem.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome}</option>`;
+            selectContagem.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'})</option>`;
         });
     }
 }
@@ -735,13 +964,52 @@ function inicializarFormularioProduto() {
     }
 }
 
+// Configurar event listeners do inventário
+function configurarInventarioListeners() {
+    const novaContagemBtn = document.getElementById('novaContagemBtn');
+    if (novaContagemBtn) {
+        novaContagemBtn.addEventListener('click', () => {
+            toggleFormContagem(true);
+        });
+    }
+    
+    const cancelarContagemBtn = document.getElementById('cancelarContagemBtn');
+    if (cancelarContagemBtn) {
+        cancelarContagemBtn.addEventListener('click', () => {
+            toggleFormContagem(false);
+        });
+    }
+    
+    const salvarContagemBtn = document.getElementById('salvarContagemBtn');
+    if (salvarContagemBtn) {
+        salvarContagemBtn.addEventListener('click', salvarContagem);
+    }
+    
+    const contagemProduto = document.getElementById('contagemProduto');
+    if (contagemProduto) {
+        contagemProduto.addEventListener('change', carregarQuantidadeSistema);
+    }
+    
+    const quantidadeContada = document.getElementById('quantidadeContada');
+    if (quantidadeContada) {
+        quantidadeContada.addEventListener('input', calcularDiferenca);
+    }
+}
+
 // Chamar inicialização quando a página de estoque for carregada
 function inicializarEstoque() {
     inicializarFormularioProduto();
     carregarProdutos();
     carregarMovimentacoes();
-    configurarMovimentacoesListeners(); 
+    carregarInventarios();      // ⭐ NOVO: Carregar histórico de inventários
+    configurarMovimentacoesListeners();
+    configurarInventarioListeners();  // ⭐ NOVO: Configurar listeners do inventário
 }
 
 // Expor funções globalmente
 window.inicializarEstoque = inicializarEstoque;
+window.carregarInventarios = carregarInventarios;
+window.toggleFormContagem = toggleFormContagem;
+window.carregarQuantidadeSistema = carregarQuantidadeSistema;
+window.calcularDiferenca = calcularDiferenca;
+window.salvarContagem = salvarContagem;

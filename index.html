@@ -516,19 +516,67 @@
                     </div>
                 </div>
                 
-                <!-- Aba: Inventário -->
+                                <!-- Aba: Inventário -->
                 <div id="abaInventario" class="aba-conteudo" style="display: none;">
-                    <div class="inventario-info">
-                        <p>📅 Contagem semanal de estoque</p>
+                    <div class="inventario-header">
+                        <h3>🔢 Contagem Semanal de Estoque</h3>
                         <button id="novaContagemBtn" class="btn-primary">➕ Nova Contagem</button>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Data</th><th>Produto</th><th>Sistema</th><th>Contado</th><th>Diferença</th><th>Observação</th></tr>
-                            </thead>
-                            <tbody><tr><td colspan="6" class="empty-message">Nenhuma contagem</td></tr></tbody>
-                        </table>
+                    
+                    <!-- Formulário de Contagem (oculto inicialmente) -->
+                    <div id="formContagem" class="form-contagem" style="display: none;">
+                        <h4>📝 Registrar Contagem</h4>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Selecione o Produto *</label>
+                                <select id="contagemProduto" class="select-produto" required>
+                                    <option value="">-- Selecione um produto --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade no Sistema</label>
+                                <input type="text" id="quantidadeSistema" readonly disabled style="background: #f1f5f9;">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade Contada *</label>
+                                <input type="number" id="quantidadeContada" step="0.001" placeholder="Digite a quantidade contada" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Diferença</label>
+                                <input type="text" id="diferencaContagem" readonly disabled style="background: #f1f5f9;">
+                            </div>
+                            <div class="form-group">
+                                <label>Observação</label>
+                                <input type="text" id="observacaoContagem" placeholder="Ex: Quebra, perda, sobra, etc.">
+                            </div>
+                            <div class="form-group full-width">
+                                <button id="salvarContagemBtn" class="btn-primary">💾 Salvar Contagem</button>
+                                <button id="cancelarContagemBtn" class="btn-secondary">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Inventários -->
+                    <div class="lista-inventarios">
+                        <h4>📋 Histórico de Contagens</h4>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Produto</th>
+                                        <th>Sistema</th>
+                                        <th>Contado</th>
+                                        <th>Diferença</th>
+                                        <th>Observação</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventarioTableBody">
+                                    <tr><td colspan="7" class="empty-message">Nenhuma contagem registrada</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 

@@ -1586,6 +1586,51 @@ td.estoque-alerta {
     100% { opacity: 1; }
 }
 
+/* ========== ESTILOS DO INVENTÁRIO ========== */
+
+.inventario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.form-contagem {
+    background: var(--light);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    border: 1px solid var(--border);
+}
+
+.form-contagem h4 {
+    margin-bottom: 15px;
+    color: var(--dark);
+    font-size: 16px;
+}
+
+.lista-inventarios h4 {
+    margin-bottom: 15px;
+    color: var(--dark);
+    font-size: 16px;
+}
+
+.diferenca-positiva {
+    color: #10b981;
+    font-weight: bold;
+}
+
+.diferenca-negativa {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+.diferenca-zero {
+    color: #64748b;
+}
+
 /* ========== ESTILOS PARA ITENS DO PAGAMENTO ========== */
 
 .itens-pagamento-container {

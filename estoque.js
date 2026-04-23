@@ -1186,10 +1186,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Configurar botão salvar
+    // Configurar botão salvar - VERSÃO COMPLETA
     const salvarBtn = document.getElementById('salvarContagemBtn');
     if (salvarBtn) {
-        salvarBtn.onclick = function() {
+        salvarBtn.onclick = async function() {
             console.log('Salvar contagem clicado');
             const produtoId = selectProduto.value;
             const quantidadeContada = parseFloat(qtdContada.value);
@@ -1200,12 +1200,102 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (isNaN(quantidadeContada) || quantidadeContada <= 0) {
+            if (isNaN(quantidadeContada) || quantidadeContada < 0) {
                 alert('Digite uma quantidade válida!');
                 return;
             }
             
-            alert(`Produto: ${selectProduto.options[selectProduto.selectedIndex]?.text}\nQuantidade contada: ${quantidadeContada}\nObservação: ${observacao || 'Nenhuma'}\n\n(Função de salvar será implementada em breve)`);
+            // Buscar produto
+            let produtosLista = null;
+            if (typeof produtos !== 'undefined') {
+                produtosLista = produtos;
+            } else if (window.produtos) {
+                produtosLista = window.produtos;
+            }
+            
+            const produto = produtosLista.find(p => p.id === produtoId);
+            if (!produto) {
+                alert('Produto não encontrado!');
+                return;
+            }
+            
+            const quantidadeSistema = produto.estoqueAtual || 0;
+            const diferenca = quantidadeContada - quantidadeSistema;
+            
+            // Confirmar se a diferença é significativa
+            if (Math.abs(diferenca) > 0) {
+                const mensagem = diferenca > 0 
+                    ? `📈 Aumento de ${diferenca.toFixed(3)} ${produto.unidade}\nO estoque será ajustado para ${quantidadeContada.toFixed(3)} ${produto.unidade}\n\nDeseja continuar?`
+                    : `📉 Diminuição de ${Math.abs(diferenca).toFixed(3)} ${produto.unidade}\nO estoque será ajustado para ${quantidadeContada.toFixed(3)} ${produto.unidade}\n\nDeseja continuar?`;
+                
+                if (!confirm(mensagem)) {
+                    return;
+                }
+            }
+            
+            try {
+                // Atualizar estoque do produto no Firebase
+                if (typeof db !== 'undefined') {
+                    await db.collection('produtos').doc(produtoId).update({
+                        estoqueAtual: quantidadeContada,
+                        ultimaAtualizacao: new Date().toISOString()
+                    });
+                }
+                
+                // Registrar inventário
+                const inventario = {
+                    produtoId: produtoId,
+                    produtoNome: produto.nome,
+                    produtoCodigo: produto.codigo,
+                    unidade: produto.unidade,
+                    quantidadeSistema: quantidadeSistema,
+                    quantidadeContada: quantidadeContada,
+                    diferenca: diferenca,
+                    observacao: observacao || (diferenca === 0 ? 'Contagem conferida' : diferenca > 0 ? 'Ajuste positivo' : 'Ajuste negativo'),
+                    dataInventario: new Date().toISOString(),
+                    usuario: 'admin'
+                };
+                
+                if (typeof db !== 'undefined') {
+                    await db.collection('inventarios').add(inventario);
+                }
+                
+                // Registrar movimentação se houver diferença
+                if (diferenca !== 0 && typeof db !== 'undefined') {
+                    await db.collection('movimentacoes').add({
+                        produtoId: produtoId,
+                        produtoNome: produto.nome,
+                        tipo: diferenca > 0 ? 'entrada' : 'saida',
+                        quantidade: Math.abs(diferenca),
+                        motivo: 'inventario',
+                        observacao: observacao,
+                        dataHora: new Date().toISOString(),
+                        usuario: 'admin'
+                    });
+                }
+                
+                // Recarregar dados
+                if (typeof carregarProdutos === 'function') {
+                    await carregarProdutos();
+                }
+                if (typeof carregarInventarios === 'function') {
+                    await carregarInventarios();
+                }
+                
+                // Fechar formulário
+                formContagem.style.display = 'none';
+                selectProduto.value = '';
+                qtdSistema.value = '';
+                qtdContada.value = '';
+                diferenca.value = '';
+                document.getElementById('observacaoContagem').value = '';
+                
+                alert(`✅ Contagem finalizada!\n\nProduto: ${produto.nome}\nEstoque ajustado para ${quantidadeContada.toFixed(3)} ${produto.unidade}\nDiferença: ${diferenca > 0 ? '+' : ''}${diferenca.toFixed(3)} ${produto.unidade}`);
+                
+            } catch (error) {
+                console.error('Erro ao salvar contagem:', error);
+                alert('❌ Erro ao salvar contagem! Verifique o console.');
+            }
         };
     }
     

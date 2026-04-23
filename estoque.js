@@ -279,32 +279,59 @@ async function salvarMovimentacao(movimentacao) {
     return await registrarMovimentacao(movimentacao);
 }
 
-// Carregar movimentações do Firebase
+// Carregar movimentações do Firebase - VERSÃO CORRIGIDA
 async function carregarMovimentacoes(filtros = {}) {
-    if (typeof db === 'undefined') return;
+    if (typeof db === 'undefined') {
+        console.log('Firebase não disponível');
+        return;
+    }
     
     try {
+        console.log('Carregando movimentações com filtros:', filtros);
+        
         let query = db.collection('movimentacoes').orderBy('dataHora', 'desc');
         
-        if (filtros.dataInicio) {
-            query = query.where('dataHora', '>=', filtros.dataInicio);
-        }
-        if (filtros.dataFim) {
-            query = query.where('dataHora', '<=', filtros.dataFim);
-        }
-        if (filtros.produtoId && filtros.produtoId !== 'todos') {
-            query = query.where('produtoId', '==', filtros.produtoId);
-        }
-        
+        // Aplicar filtro por data (necessita de índices compostos no Firebase)
+        // Para simplificar, vamos filtrar no frontend
         const snapshot = await query.get();
-        movimentacoes = [];
+        let movimentacoesLista = [];
+        
         snapshot.forEach(doc => {
-            movimentacoes.push({ id: doc.id, ...doc.data() });
+            movimentacoesLista.push({ id: doc.id, ...doc.data() });
         });
         
+        // Filtrar por data (no frontend)
+        if (filtros.dataInicio) {
+            const dataInicioObj = new Date(filtros.dataInicio);
+            dataInicioObj.setHours(0, 0, 0, 0);
+            movimentacoesLista = movimentacoesLista.filter(mov => {
+                const movData = new Date(mov.dataHora);
+                return movData >= dataInicioObj;
+            });
+        }
+        
+        if (filtros.dataFim) {
+            const dataFimObj = new Date(filtros.dataFim);
+            dataFimObj.setHours(23, 59, 59, 999);
+            movimentacoesLista = movimentacoesLista.filter(mov => {
+                const movData = new Date(mov.dataHora);
+                return movData <= dataFimObj;
+            });
+        }
+        
+        // Filtrar por produto
+        if (filtros.produtoId && filtros.produtoId !== 'todos') {
+            movimentacoesLista = movimentacoesLista.filter(mov => mov.produtoId === filtros.produtoId);
+        }
+        
+        movimentacoes = movimentacoesLista;
+        console.log(`${movimentacoes.length} movimentações carregadas após filtros`);
+        
         renderizarMovimentacoes();
+        
     } catch (error) {
         console.error('Erro ao carregar movimentações:', error);
+        mostrarNotificacao('Erro ao carregar movimentações!', 'error');
     }
 }
 
@@ -347,11 +374,15 @@ function getMotivoTexto(motivo) {
     return motivos[motivo] || motivo;
 }
 
-// Filtrar movimentações
+// Filtrar movimentações - VERSÃO CORRIGIDA
 function filtrarMovimentacoes() {
+    console.log('=== FILTRANDO MOVIMENTAÇÕES ===');
+    
     const dataInicio = document.getElementById('movDataInicio')?.value;
     const dataFim = document.getElementById('movDataFim')?.value;
     const produtoId = document.getElementById('movProdutoFiltro')?.value;
+    
+    console.log('Filtros aplicados:', { dataInicio, dataFim, produtoId });
     
     carregarMovimentacoes({ dataInicio, dataFim, produtoId });
 }
@@ -360,7 +391,14 @@ function filtrarMovimentacoes() {
 function configurarMovimentacoesListeners() {
     const filtrarBtn = document.getElementById('filtrarMovimentacoesBtn');
     if (filtrarBtn) {
-        filtrarBtn.addEventListener('click', filtrarMovimentacoes);
+        console.log('Configurando botão filtrar movimentações');
+        filtrarBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Botão Filtrar clicado!');
+            filtrarMovimentacoes();
+        });
+    } else {
+        console.log('Botão filtrarMovimentacoesBtn não encontrado');
     }
 }
 
@@ -639,6 +677,16 @@ function atualizarSelectsProdutos() {
         produtos.forEach(produto => {
             selectContagem.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'})</option>`;
         });
+    }
+
+    // Select de produtos no filtro de movimentações
+    const selectProdutoMov = document.getElementById('movProdutoFiltro');
+    if (selectProdutoMov) {
+        selectProdutoMov.innerHTML = '<option value="todos">📋 Todos os produtos</option>';
+        produtos.forEach(produto => {
+            selectProdutoMov.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome}</option>`;
+        });
+        console.log(`Select de movimentações populado com ${produtos.length} produtos`);
     }
 }
 

@@ -2106,3 +2106,49 @@ if (typeof window.inicializarEstoque !== 'undefined') {
 }
 
 console.log('✅ Funções da tela de consumo carregadas!');
+
+// ========== CONFIGURAÇÃO FORÇADA DO BOTÃO CONSUMO ==========
+// Aguardar o DOM carregar completamente
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Configurando botão de consumo...');
+    
+    const filtrarConsumoBtn = document.getElementById('filtrarConsumoBtn');
+    if (filtrarConsumoBtn) {
+        // Remover event listeners antigos
+        const novoBtn = filtrarConsumoBtn.cloneNode(true);
+        filtrarConsumoBtn.parentNode.replaceChild(novoBtn, filtrarConsumoBtn);
+        
+        // Adicionar novo event listener
+        novoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Filtrar Consumo CLICADO!');
+            if (typeof exibirConsumo === 'function') {
+                exibirConsumo();
+            } else {
+                console.error('Função exibirConsumo não encontrada');
+            }
+        });
+        console.log('✅ Botão Filtrar Consumo configurado permanentemente!');
+    } else {
+        console.log('❌ Botão filtrarConsumoBtn não encontrado');
+    }
+    
+    // Configurar também o toggle de datas
+    const periodoSelect = document.getElementById('periodoConsumo');
+    if (periodoSelect) {
+        periodoSelect.addEventListener('change', function() {
+            console.log('Período alterado para:', this.value);
+            const dataInicioGroup = document.getElementById('dataInicioGroup');
+            const dataFimGroup = document.getElementById('dataFimGroup');
+            if (this.value === 'personalizado') {
+                if (dataInicioGroup) dataInicioGroup.style.display = 'block';
+                if (dataFimGroup) dataFimGroup.style.display = 'block';
+            } else {
+                if (dataInicioGroup) dataInicioGroup.style.display = 'none';
+                if (dataFimGroup) dataFimGroup.style.display = 'none';
+            }
+        });
+        console.log('✅ Listener do período configurado');
+    }
+});

@@ -1868,3 +1868,227 @@ td.estoque-alerta {
         font-size: 18px;
     }
 }
+
+/* ========== RESPONSIVIDADE DA PÁGINA DE ESTOQUE ========== */
+
+/* Container principal do estoque */
+#estoquePage {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* Ajustes gerais para telas pequenas */
+@media (max-width: 768px) {
+    /* Container do estoque */
+    #estoquePage .card {
+        padding: 15px;
+    }
+    
+    /* Títulos */
+    #estoquePage .card-title {
+        font-size: 18px;
+    }
+    
+    /* Abas */
+    .tabs-estoque {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-bottom: 15px;
+    }
+    
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        flex: 1;
+        min-width: 70px;
+        text-align: center;
+    }
+    
+    /* Formulário de produto */
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    /* Campos de preço lado a lado no mobile */
+    .campos-preco {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    /* Tabelas */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .data-table {
+        min-width: 500px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 8px 6px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    
+    /* Botões de ação na tabela */
+    .data-table .action-buttons {
+        flex-direction: row;
+        gap: 4px;
+    }
+    
+    .data-table .action-buttons button {
+        padding: 4px 6px;
+        font-size: 10px;
+    }
+    
+    /* Filtros de movimentações */
+    .filtros-movimentacoes {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filtros-movimentacoes .form-group {
+        width: 100%;
+    }
+    
+    .filtros-movimentacoes button {
+        width: 100%;
+    }
+    
+    /* Filtros de consumo */
+    .filtros-consumo {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filtros-consumo .form-group {
+        width: 100%;
+    }
+    
+    .filtros-consumo button {
+        width: 100%;
+    }
+    
+    /* Cards de resumo */
+    .resumo-consumo {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .resumo-card-consumo {
+        padding: 12px;
+    }
+    
+    .resumo-valor-consumo {
+        font-size: 18px;
+    }
+    
+    /* Cards de inventário */
+    .inventario-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .inventario-header button {
+        width: 100%;
+    }
+    
+    /* Formulário de contagem */
+    .form-contagem .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Botões do formulário de contagem */
+    .form-contagem .modal-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .form-contagem .modal-buttons button {
+        width: 100%;
+    }
+}
+
+/* Para telas muito pequenas (menos de 480px) */
+@media (max-width: 480px) {
+    #estoquePage .card {
+        padding: 10px;
+    }
+    
+    .tab-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 6px 4px;
+        font-size: 10px;
+    }
+    
+    .data-table .action-buttons button {
+        padding: 3px 5px;
+        font-size: 9px;
+    }
+    
+    .resumo-valor-consumo {
+        font-size: 14px;
+    }
+}
+
+/* Ajuste para o select de produtos no mobile */
+.select-produto,
+.select-produto-consumo,
+.select-periodo,
+.select-mes,
+.select-status {
+    width: 100%;
+    font-size: 14px;
+    padding: 10px;
+}
+
+/* Ajuste dos inputs no mobile */
+#estoquePage input,
+#estoquePage select,
+#estoquePage button {
+    font-size: 14px;
+}
+
+/* Impedir que o conteúdo ultrapasse a tela */
+body {
+    overflow-x: hidden;
+}
+
+.app-container {
+    overflow-x: hidden;
+}
+
+/* Ajuste da tabela de consumo no mobile */
+#consumoTableBody td {
+    white-space: nowrap;
+}
+
+/* Ajuste dos modais no mobile */
+.modal-content {
+    width: 95%;
+    margin: 10px;
+    max-height: 90vh;
+}
+
+@media (max-width: 768px) {
+    .modal-content {
+        width: 98%;
+    }
+    
+    .modal-header h2 {
+        font-size: 16px;
+    }
+    
+    .modal-form .form-group {
+        margin-bottom: 10px;
+    }
+}

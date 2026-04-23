@@ -1057,3 +1057,21 @@ window.toggleFormContagem = toggleFormContagem;
 window.carregarQuantidadeSistema = carregarQuantidadeSistema;
 window.calcularDiferenca = calcularDiferenca;
 window.salvarContagem = salvarContagem;
+
+// Teste automático ao carregar
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== INICIANDO TESTE DO INVENTÁRIO ===');
+    
+    const btnNovaContagem = document.getElementById('novaContagemBtn');
+    console.log('Botão Nova Contagem encontrado?', btnNovaContagem ? 'SIM' : 'NÃO');
+    
+    const formContagem = document.getElementById('formContagem');
+    console.log('Formulário Contagem encontrado?', formContagem ? 'SIM' : 'NÃO');
+    
+    if (btnNovaContagem && formContagem) {
+        btnNovaContagem.onclick = function() {
+            formContagem.style.display = 'block';
+            alert('Teste: Formulário aberto!');
+        };
+    }
+});

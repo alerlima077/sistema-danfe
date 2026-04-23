@@ -1063,15 +1063,86 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== INICIANDO TESTE DO INVENTÁRIO ===');
     
     const btnNovaContagem = document.getElementById('novaContagemBtn');
-    console.log('Botão Nova Contagem encontrado?', btnNovaContagem ? 'SIM' : 'NÃO');
-    
     const formContagem = document.getElementById('formContagem');
-    console.log('Formulário Contagem encontrado?', formContagem ? 'SIM' : 'NÃO');
+    const selectProduto = document.getElementById('contagemProduto');
+    const qtdSistema = document.getElementById('quantidadeSistema');
+    const qtdContada = document.getElementById('quantidadeContada');
+    const diferenca = document.getElementById('diferencaContagem');
     
+    console.log('Botão Nova Contagem:', btnNovaContagem ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    console.log('Formulário Contagem:', formContagem ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    console.log('Select Produto:', selectProduto ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    console.log('Qtd Sistema:', qtdSistema ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    console.log('Qtd Contada:', qtdContada ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    console.log('Diferença:', diferenca ? '✅ ENCONTRADO' : '❌ NÃO ENCONTRADO');
+    
+    // Função para carregar quantidade do sistema
+    function carregarQuantidadeSistemaTeste() {
+        const produtoId = selectProduto.value;
+        console.log('Produto selecionado ID:', produtoId);
+        
+        if (produtoId && window.produtos) {
+            const produto = window.produtos.find(p => p.id === produtoId);
+            console.log('Produto encontrado:', produto);
+            if (produto) {
+                const qtd = produto.estoqueAtual || 0;
+                const unidade = produto.unidade || 'UN';
+                qtdSistema.value = `${qtd.toFixed(3)} ${unidade}`;
+                qtdSistema.setAttribute('data-valor', qtd);
+                console.log('Quantidade sistema carregada:', qtd);
+            } else {
+                console.log('Produto não encontrado no array produtos');
+            }
+        } else {
+            qtdSistema.value = '';
+            qtdSistema.removeAttribute('data-valor');
+        }
+        calcularDiferencaTeste();
+    }
+    
+    // Função para calcular diferença
+    function calcularDiferencaTeste() {
+        const contada = parseFloat(qtdContada.value) || 0;
+        const sistema = parseFloat(qtdSistema.getAttribute('data-valor')) || 0;
+        const diff = contada - sistema;
+        console.log(`Cálculo: ${contada} - ${sistema} = ${diff}`);
+        diferenca.value = `${diff > 0 ? '+' : ''}${diff.toFixed(3)}`;
+        
+        if (diff > 0) {
+            diferenca.className = 'diferenca-positiva';
+        } else if (diff < 0) {
+            diferenca.className = 'diferenca-negativa';
+        } else {
+            diferenca.className = 'diferenca-zero';
+        }
+    }
+    
+    // Configurar eventos
     if (btnNovaContagem && formContagem) {
         btnNovaContagem.onclick = function() {
             formContagem.style.display = 'block';
-            alert('Teste: Formulário aberto!');
+            // Carregar produtos no select
+            if (selectProduto && window.produtos) {
+                selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
+                window.produtos.forEach(produto => {
+                    selectProduto.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'})</option>`;
+                });
+            }
         };
     }
+    
+    if (selectProduto) {
+        selectProduto.addEventListener('change', carregarQuantidadeSistemaTeste);
+    }
+    
+    if (qtdContada) {
+        qtdContada.addEventListener('input', calcularDiferencaTeste);
+    }
+    
+    // Expor funções globalmente para debug
+    window.carregarQtdTeste = carregarQuantidadeSistemaTeste;
+    window.calcularDiffTeste = calcularDiferencaTeste;
+    
+    console.log('=== TESTE CONFIGURADO ===');
+    console.log('Selecione um produto e veja se a quantidade sistema aparece!');
 });

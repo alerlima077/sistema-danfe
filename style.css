@@ -178,6 +178,105 @@ body.logged-out .app-container {
     font-size: 12px;
 }
 
+/* Tabs do Estoque */
+.tabs-estoque {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 8px 8px 0 0;
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+    background: var(--light);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 3px solid var(--primary);
+    background: var(--light);
+}
+
+.btn-estoque {
+    background: #2563EB;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-estoque:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(16,185,129,0.3);
+}
+
+/* Badges de margem */
+.margem-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.margem-badge.alta {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.margem-badge.media {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.margem-badge.baixa {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Campos de preço lado a lado */
+.campos-preco {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.margem-info {
+    background: var(--light);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.margem-info.alta {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.margem-info.baixa {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 /* Botão de Logout */
 .btn-logout {
     background: #ef4444;
@@ -1450,6 +1549,41 @@ body.logged-in .app-container {
     .tabela-pagamentos td {
         padding: 6px;
     }
+}
+
+/* Cores para status do estoque - CORRIGIDO */
+td.estoque-zero {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    font-weight: bold;
+    animation: piscar 1s ease-in-out 3;
+}
+
+td.estoque-critico {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+    font-weight: bold;
+    animation: piscar 1s ease-in-out 1;
+}
+
+td.estoque-alerta {
+    background-color: #fed7aa !important;
+    color: #92400e !important;
+    font-weight: bold;
+}
+
+/* Garantir que a célula de estoque tenha padding e borda */
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+
+/* Animação de piscar */
+@keyframes piscar {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; background-color: #fecaca !important; }
+    100% { opacity: 1; }
 }
 
 /* ========== ESTILOS PARA ITENS DO PAGAMENTO ========== */

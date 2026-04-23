@@ -1244,6 +1244,12 @@ document.getElementById('notaForm')?.addEventListener('submit', async (e) => {
             const docRef = await db.collection('notas').add(nota);
             notaId = docRef.id;
             await carregarDadosFirebase();
+
+            // ⭐ NOVO: Atualizar estoque para cada produto da nota ⭐
+            for (const produtoNota of produtos) {
+                await atualizarEstoquePorNota(produtoNota, notaId);
+            }
+
         } else {
             notas.push(nota);
             if (!boletos[nota.id]) boletos[nota.id] = [];
@@ -1759,6 +1765,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('notasPage').style.display = 'none';
         document.getElementById('boletosPage').style.display = 'block';
         document.getElementById('sangriaPage').style.display = 'none';
+        document.getElementById('estoquePage').style.display = 'none';
         renderBoletosAgrupados();
         
         // ⭐ VERIFICAR SE HÁ UMA NOTA RECÉM-CADASTRADA ⭐
@@ -1787,6 +1794,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('notasPage').style.display = 'none';
             document.getElementById('boletosPage').style.display = 'none';
             document.getElementById('sangriaPage').style.display = 'block';
+            document.getElementById('estoquePage').style.display = 'none';
             renderSangria();
         });
     }
@@ -1981,6 +1989,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Chamar configuração de todos produtos
     configurarTodosProdutos();
+    
+    // ========== IMPLEMENTAÇÃO DO BOTÃO ESTOQUE ==========
+    
+    // Botão Estoque
+    const estoquePageBtn = document.getElementById('estoquePageBtn');
+    if (estoquePageBtn) {
+        estoquePageBtn.addEventListener('click', () => {
+            document.getElementById('notasPage').style.display = 'none';
+            document.getElementById('boletosPage').style.display = 'none';
+            document.getElementById('sangriaPage').style.display = 'none';
+            document.getElementById('estoquePage').style.display = 'block';
+            
+            // Carregar dados do estoque se as funções existirem
+            if (typeof carregarProdutos === 'function') {
+                carregarProdutos();
+            }
+            if (typeof carregarMovimentacoes === 'function') {
+                carregarMovimentacoes();
+            }
+        });
+    } else {
+        console.log('Botão estoquePageBtn não encontrado - verifique o ID no HTML');
+    }
     
     adicionarBotaoLogout();
     checkAuth();

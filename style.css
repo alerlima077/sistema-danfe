@@ -2504,15 +2504,15 @@ body {
 }
 
 .resumo-label {
-    font-size: 12px;
-    color: var(--gray);
+    font-size: 16px;
+    color: var(--light);
     display: block;
 }
 
 .resumo-valor {
     font-size: 20px;
     font-weight: bold;
-    color: var(--primary);
+    color: var(--light);
 }
 
 @media (max-width: 768px) {

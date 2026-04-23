@@ -995,6 +995,14 @@ window.excluirProduto = async function(produtoId) {
         try {
             await excluirProdutoFirebase(produtoId);
             await carregarProdutos();
+            
+            // ⭐ ATUALIZAR DASHBOARD SE ESTIVER VISÍVEL ⭐
+            if (document.getElementById('dashboardPage').style.display === 'block') {
+                if (typeof carregarDashboard === 'function') {
+                    await carregarDashboard();
+                }
+            }
+            
             mostrarNotificacao('Produto excluído!', 'success');
         } catch (error) {
             mostrarNotificacao('Erro ao excluir produto!', 'error');

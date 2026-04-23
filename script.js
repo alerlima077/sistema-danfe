@@ -1785,18 +1785,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // ========== BOTÃO DASHBOARD ==========
+    // Botão Dashboard
     const dashboardPageBtn = document.getElementById('dashboardPageBtn');
     if (dashboardPageBtn) {
-        dashboardPageBtn.addEventListener('click', () => {
+        dashboardPageBtn.addEventListener('click', async () => {
             console.log('Dashboard clicado');
             document.getElementById('dashboardPage').style.display = 'block';
             document.getElementById('notasPage').style.display = 'none';
             document.getElementById('boletosPage').style.display = 'none';
             document.getElementById('sangriaPage').style.display = 'none';
             document.getElementById('estoquePage').style.display = 'none';
+            
+            // ⭐ FORÇAR RECARREGAMENTO COMPLETO ⭐
+            if (typeof carregarProdutos === 'function') {
+                await carregarProdutos();
+            }
             if (typeof carregarDashboard === 'function') {
-                carregarDashboard();
+                await carregarDashboard();
             }
         });
     }
@@ -2063,9 +2068,19 @@ let graficoConsumo = null;
 async function carregarDashboard() {
     console.log('📊 Carregando Dashboard de Estoque...');
     
+    // ⭐ FORÇAR RECARREGAMENTO DOS PRODUTOS DO FIREBASE ⭐
+    if (typeof carregarProdutos === 'function') {
+        await carregarProdutos();
+    }
+    
     if (typeof produtos === 'undefined' || produtos.length === 0) {
-        console.log('Aguardando produtos carregarem...');
-        setTimeout(() => carregarDashboard(), 1000);
+        console.log('Nenhum produto encontrado');
+        document.getElementById('totalProdutos').innerText = '0';
+        document.getElementById('produtosNormal').innerText = '0';
+        document.getElementById('produtosAlerta').innerText = '0';
+        document.getElementById('produtosCritico').innerText = '0';
+        document.getElementById('valorTotalEstoque').innerHTML = 'R$ 0,00';
+        document.getElementById('alertasEstoque').innerHTML = '<div class="empty-message">Nenhum produto cadastrado</div>';
         return;
     }
     
@@ -2103,7 +2118,7 @@ async function carregarDashboard() {
     document.getElementById('produtosCritico').innerText = produtosCritico;
     document.getElementById('valorTotalEstoque').innerHTML = `R$ ${valorTotalEstoque.toFixed(3)}`;
     
-    // Giro de Estoque (itens movimentados nos últimos 30 dias)
+    // Giro de Estoque
     await atualizarGiroEstoque();
     
     // Alertas de Estoque
@@ -2626,6 +2641,32 @@ function atualizarProximosVencimentos() {
         `;
     }).join('');
 }
+
+// Função para resetar e recarregar todos os dados do Dashboard
+async function resetarDashboard() {
+    console.log('🔄 Resetando Dashboard...');
+    
+    // Recarregar produtos do Firebase
+    if (typeof carregarProdutos === 'function') {
+        await carregarProdutos();
+    }
+    
+    // Recarregar movimentações
+    if (typeof carregarMovimentacoes === 'function') {
+        await carregarMovimentacoes({});
+    }
+    
+    // Recarregar Dashboard
+    if (typeof carregarDashboard === 'function') {
+        await carregarDashboard();
+    }
+    
+    console.log('✅ Dashboard resetado com sucesso!');
+}
+
+// Expor função globalmente para teste no Console
+window.resetarDashboard = resetarDashboard;
+
 
 // Apenas a parte de correção para campos colados
 function corrigirMaiusculasAoColar() {

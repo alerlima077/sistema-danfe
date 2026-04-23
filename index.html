@@ -487,7 +487,7 @@
                     </div>
                 </div>
                 
-                <!-- Aba: Movimentações (inicialmente vazia) -->
+                <!-- Aba: Movimentações -->
                 <div id="abaMovimentacoes" class="aba-conteudo" style="display: none;">
                     <div class="filtros-movimentacoes">
                         <div class="form-group">
@@ -506,12 +506,22 @@
                         </div>
                         <button id="filtrarMovimentacoesBtn" class="btn-primary">🔍 Filtrar</button>
                     </div>
+                    
+                    <!-- TABELA COM O ID CORRETO -->
                     <div class="table-responsive">
                         <table class="data-table">
                             <thead>
-                                <tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Motivo</th></tr>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Produto</th>
+                                    <th>Tipo</th>
+                                    <th>Quantidade</th>
+                                    <th>Motivo</th>
+                                </tr>
                             </thead>
-                            <tbody><tr><td colspan="5" class="empty-message">Nenhuma movimentação</td></tr></tbody>
+                            <tbody id="movimentacoesTableBody">
+                                <tr><td colspan="5" class="empty-message">Nenhuma movimentação encontrada</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>

@@ -997,12 +997,12 @@ window.atualizarPrecoVenda = async function(produtoId) {
 
 // ========== FUNÇÃO 4: AJUSTAR ESTOQUE (já existente, mantida) ==========
 
-// Ajustar estoque manualmente
+// Ajustar estoque manualmente - (salva o nome do produto)
 window.ajustarEstoque = async function(produtoId) {
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) return;
     
-    const novaQuantidade = prompt(`Estoque atual: ${produto.estoqueAtual?.toFixed(3) || 0} ${produto.unidade || 'UN'}\n\nDigite a nova quantidade:`);
+    const novaQuantidade = prompt(`Produto: ${produto.nome}\nEstoque atual: ${produto.estoqueAtual?.toFixed(3) || 0} ${produto.unidade || 'UN'}\n\nDigite a nova quantidade:`);
     
     if (novaQuantidade !== null) {
         const quantidade = parseFloat(novaQuantidade);
@@ -1010,16 +1010,21 @@ window.ajustarEstoque = async function(produtoId) {
             const diferenca = quantidade - (produto.estoqueAtual || 0);
             
             try {
-                await atualizarProdutoFirebase(produtoId, { estoqueAtual: quantidade });
+                await atualizarProdutoFirebase(produtoId, { 
+                    estoqueAtual: quantidade,
+                    ultimaAtualizacao: new Date().toISOString()
+                });
                 await carregarProdutos();
                 
-                // Registrar movimentação
-                if (diferenca !== 0 && typeof salvarMovimentacao === 'function') {
-                    await salvarMovimentacao({
+                // Registrar movimentação com o nome do produto
+                if (diferenca !== 0 && typeof registrarMovimentacao === 'function') {
+                    await registrarMovimentacao({
                         produtoId: produtoId,
+                        produtoNome: produto.nome,  // ⭐ NOME DO PRODUTO
                         tipo: diferenca > 0 ? 'entrada' : 'saida',
                         quantidade: Math.abs(diferenca),
                         motivo: 'ajuste_manual',
+                        observacao: `Ajuste manual de ${produto.estoqueAtual?.toFixed(3)} para ${quantidade.toFixed(3)}`,
                         dataHora: new Date().toISOString(),
                         usuario: 'admin'
                     });
@@ -1027,6 +1032,7 @@ window.ajustarEstoque = async function(produtoId) {
                 
                 mostrarNotificacao(`Estoque ajustado para ${quantidade.toFixed(3)} ${produto.unidade}`, 'success');
             } catch (error) {
+                console.error('Erro ao ajustar estoque:', error);
                 mostrarNotificacao('Erro ao ajustar estoque!', 'error');
             }
         } else {
@@ -1384,6 +1390,107 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
     }
+
+    // ========== CONFIGURAÇÃO FORÇADA DOS BOTÕES ==========
+// Este código será executado quando a página carregar
+
+// Aguardar o DOM carregar completamente
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Iniciando configuração forçada dos botões...');
+    
+    // Configurar botão Filtrar
+    const filtrarBtn = document.getElementById('filtrarMovimentacoesBtn');
+    if (filtrarBtn) {
+        console.log('✅ Botão Filtrar encontrado!');
+        filtrarBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Filtrar CLICADO!');
+            
+            const dataInicio = document.getElementById('movDataInicio')?.value;
+            const dataFim = document.getElementById('movDataFim')?.value;
+            const produtoId = document.getElementById('movProdutoFiltro')?.value;
+            
+            console.log('Filtros:', { dataInicio, dataFim, produtoId });
+            
+            // Chamar a função de filtro diretamente
+            if (typeof carregarMovimentacoes === 'function') {
+                if (!dataInicio && !dataFim && (!produtoId || produtoId === 'todos')) {
+                    carregarMovimentacoes({});
+                } else {
+                    carregarMovimentacoes({ dataInicio, dataFim, produtoId });
+                }
+            } else {
+                console.error('Função carregarMovimentacoes não encontrada!');
+            }
+        };
+    } else {
+        console.error('❌ Botão filtrarMovimentacoesBtn NÃO encontrado!');
+    }
+    
+    // Configurar botão Limpar Filtros (se existir)
+    const limparBtn = document.getElementById('limparFiltrosBtn');
+    if (limparBtn) {
+        console.log('✅ Botão Limpar Filtros encontrado!');
+        limparBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log('👉 Botão Limpar Filtros CLICADO!');
+            
+            const dataInicioInput = document.getElementById('movDataInicio');
+            const dataFimInput = document.getElementById('movDataFim');
+            const produtoSelect = document.getElementById('movProdutoFiltro');
+            
+            if (dataInicioInput) dataInicioInput.value = '';
+            if (dataFimInput) dataFimInput.value = '';
+            if (produtoSelect) produtoSelect.value = 'todos';
+            
+            if (typeof carregarMovimentacoes === 'function') {
+                carregarMovimentacoes({});
+            }
+            
+            if (typeof mostrarNotificacao === 'function') {
+                mostrarNotificacao('Filtros limpos!', 'info');
+            }
+        };
+    }
+    
+    // Configurar botão Nova Contagem (inventário)
+    const novaContagemBtn = document.getElementById('novaContagemBtn');
+    const formContagem = document.getElementById('formContagem');
+    if (novaContagemBtn && formContagem) {
+        console.log('✅ Botão Nova Contagem encontrado!');
+        novaContagemBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log('👉 Botão Nova Contagem CLICADO!');
+            formContagem.style.display = 'block';
+            
+            // Popular select de produtos
+            const selectProduto = document.getElementById('contagemProduto');
+            if (selectProduto && typeof produtos !== 'undefined' && produtos.length > 0) {
+                selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
+                produtos.forEach(produto => {
+                    selectProduto.innerHTML += `<option value="${produto.id}">${produto.codigo} - ${produto.nome} (Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'})</option>`;
+                });
+            }
+        };
+    }
+    
+    console.log('🔧 Configuração forçada concluída!');
+});
+
+// Também configurar quando a aba de movimentações for aberta
+if (typeof mostrarAba === 'function') {
+    const originalMostrarAba = mostrarAba;
+    window.mostrarAba = function(aba) {
+        originalMostrarAba(aba);
+        if (aba === 'movimentacoes') {
+            console.log('📊 Aba Movimentações aberta, recarregando dados...');
+            if (typeof carregarMovimentacoes === 'function') {
+                carregarMovimentacoes({});
+            }
+        }
+    };
+}
     
     // Expor funções globalmente para debug
     window.carregarQtdTeste = carregarQuantidadeSistemaTeste;
@@ -1393,3 +1500,206 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== TESTE CONFIGURADO ===');
     console.log('Clique em "Nova Contagem" e selecione um produto!');
 });
+
+// ========== CONFIGURAÇÃO MANUAL DOS BOTÕES ==========
+// Este código será executado quando o script carregar
+
+console.log('🔧 Configurando botões do estoque...');
+
+// Aguardar um pequeno delay para garantir que o DOM está pronto
+setTimeout(function() {
+    console.log('🔧 Configurando botões (após delay)...');
+    
+    // 1. Botão Filtrar Movimentações
+    const filtrarBtn = document.getElementById('filtrarMovimentacoesBtn');
+    if (filtrarBtn) {
+        console.log('✅ Botão Filtrar encontrado!');
+        filtrarBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('👉 Botão Filtrar CLICADO!');
+            
+            const dataInicio = document.getElementById('movDataInicio')?.value || '';
+            const dataFim = document.getElementById('movDataFim')?.value || '';
+            const produtoId = document.getElementById('movProdutoFiltro')?.value || 'todos';
+            
+            console.log('📋 Filtros:', { dataInicio, dataFim, produtoId });
+            
+            // Chamar a função de carregar movimentações com filtros
+            if (typeof carregarMovimentacoes === 'function') {
+                carregarMovimentacoes({ dataInicio, dataFim, produtoId });
+            } else {
+                console.error('Função carregarMovimentacoes não encontrada!');
+            }
+        };
+    } else {
+        console.error('❌ Botão Filtrar NÃO encontrado!');
+    }
+    
+    // 2. Botão Limpar Filtros (se existir)
+    const limparBtn = document.getElementById('limparFiltrosBtn');
+    if (limparBtn) {
+        console.log('✅ Botão Limpar Filtros encontrado!');
+        limparBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log('👉 Botão Limpar Filtros CLICADO!');
+            
+            const dataInicio = document.getElementById('movDataInicio');
+            const dataFim = document.getElementById('movDataFim');
+            const produtoSelect = document.getElementById('movProdutoFiltro');
+            
+            if (dataInicio) dataInicio.value = '';
+            if (dataFim) dataFim.value = '';
+            if (produtoSelect) produtoSelect.value = 'todos';
+            
+            if (typeof carregarMovimentacoes === 'function') {
+                carregarMovimentacoes({});
+            }
+            
+            if (typeof mostrarNotificacao === 'function') {
+                mostrarNotificacao('Filtros limpos!', 'info');
+            }
+        };
+    }
+    
+    // 3. Botão Nova Contagem (Inventário)
+    const novaContagemBtn = document.getElementById('novaContagemBtn');
+    const formContagem = document.getElementById('formContagem');
+    if (novaContagemBtn && formContagem) {
+        console.log('✅ Botão Nova Contagem encontrado!');
+        novaContagemBtn.onclick = function(e) {
+            e.preventDefault();
+            console.log('👉 Botão Nova Contagem CLICADO!');
+            formContagem.style.display = 'block';
+            
+            // Popular select de produtos
+            const selectProduto = document.getElementById('contagemProduto');
+            if (selectProduto) {
+                // Tentar acessar produtos de onde estiverem
+                let produtosLista = null;
+                if (typeof produtos !== 'undefined') produtosLista = produtos;
+                else if (window.produtos) produtosLista = window.produtos;
+                else if (typeof window.produtos !== 'undefined') produtosLista = window.produtos;
+                
+                if (produtosLista && produtosLista.length > 0) {
+                    selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
+                    produtosLista.forEach(produto => {
+                        const estoqueAtual = (produto.estoqueAtual || 0).toFixed(3);
+                        selectProduto.innerHTML += `<option value="${produto.id}">${produto.codigo || produto.id} - ${produto.nome} (Estoque: ${estoqueAtual} ${produto.unidade || 'UN'})</option>`;
+                    });
+                    console.log('✅ Select de produtos populado');
+                } else {
+                    console.log('⏳ Aguardando produtos carregarem...');
+                    // Tentar novamente após 1 segundo
+                    setTimeout(function() {
+                        if (typeof produtos !== 'undefined' && produtos.length > 0) {
+                            selectProduto.innerHTML = '<option value="">-- Selecione um produto --</option>';
+                            produtos.forEach(produto => {
+                                selectProduto.innerHTML += `<option value="${produto.id}">${produto.nome}</option>`;
+                            });
+                        }
+                    }, 1000);
+                }
+            }
+        };
+    }
+    
+    console.log('🔧 Configuração dos botões concluída!');
+}, 500);
+
+// ========== FUNÇÕES DE ADMINISTRAÇÃO (VIA CONSOLE) ==========
+// Estas funções só podem ser executadas pelo Console do navegador
+
+window.admin = {
+    // Listar todas as movimentações
+    listarMovimentacoes: async function() {
+        if (typeof db === 'undefined') {
+            console.log('❌ Firebase não disponível');
+            return;
+        }
+        const snapshot = await db.collection('movimentacoes').get();
+        const lista = [];
+        snapshot.forEach(doc => {
+            lista.push({ 
+                id: doc.id, 
+                data: doc.data().dataHora,
+                produto: doc.data().produtoNome || doc.data().produtoId,
+                tipo: doc.data().tipo,
+                quantidade: doc.data().quantidade,
+                motivo: doc.data().motivo
+            });
+        });
+        console.table(lista);
+        return lista;
+    },
+    
+    // Excluir movimentação específica (por ID)
+    excluirMovimentacao: async function(id) {
+        if (typeof db === 'undefined') {
+            console.log('❌ Firebase não disponível');
+            return;
+        }
+        if (!id) {
+            console.log('❌ Informe o ID da movimentação');
+            console.log('Use: admin.excluirMovimentacao("ID_AQUI")');
+            return;
+        }
+        try {
+            await db.collection('movimentacoes').doc(id).delete();
+            console.log(`✅ Movimentação ${id} excluída com sucesso!`);
+            // Recarregar a lista
+            await carregarMovimentacoes({});
+        } catch (error) {
+            console.error('❌ Erro ao excluir:', error);
+        }
+    },
+    
+    // Excluir todas as movimentações de teste (apenas ajuste_manual)
+    limparMovimentacoesTeste: async function() {
+        if (typeof db === 'undefined') {
+            console.log('❌ Firebase não disponível');
+            return;
+        }
+        const confirmar = confirm('⚠️ ATENÇÃO! Isso irá excluir TODAS as movimentações de teste (motivo: ajuste_manual).\n\nDeseja continuar?');
+        if (!confirmar) return;
+        
+        const snapshot = await db.collection('movimentacoes').where('motivo', '==', 'ajuste_manual').get();
+        let count = 0;
+        for (const doc of snapshot.docs) {
+            await doc.ref.delete();
+            count++;
+        }
+        console.log(`✅ ${count} movimentações de teste excluídas!`);
+        await carregarMovimentacoes({});
+    },
+    
+    // Excluir movimentações por período
+    excluirPorPeriodo: async function(dataInicio, dataFim) {
+        if (typeof db === 'undefined') {
+            console.log('❌ Firebase não disponível');
+            return;
+        }
+        const inicio = new Date(dataInicio);
+        const fim = new Date(dataFim);
+        fim.setHours(23, 59, 59);
+        
+        const snapshot = await db.collection('movimentacoes').get();
+        let count = 0;
+        for (const doc of snapshot.docs) {
+            const dataMov = new Date(doc.data().dataHora);
+            if (dataMov >= inicio && dataMov <= fim) {
+                await doc.ref.delete();
+                count++;
+            }
+        }
+        console.log(`✅ ${count} movimentações excluídas no período ${dataInicio} a ${dataFim}`);
+        await carregarMovimentacoes({});
+    }
+};
+
+console.log('🛠️ Funções admin disponíveis no Console!');
+console.log('📋 Comandos disponíveis:');
+console.log('   admin.listarMovimentacoes() - Lista todas as movimentações');
+console.log('   admin.excluirMovimentacao("ID") - Exclui movimentação específica');
+console.log('   admin.limparMovimentacoesTeste() - Exclui movimentações de teste');
+console.log('   admin.excluirPorPeriodo("2024-01-01", "2024-01-31") - Exclui por período');

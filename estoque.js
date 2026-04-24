@@ -2440,15 +2440,15 @@ async function exibirConsumo() {
     const totalElement = document.getElementById('valorConsumidoPeriodo');
     const mediaElement = document.getElementById('mediaDiaria');
     
-    if (estoqueElement) estoqueElement.innerHTML = `${estoqueAtual.toFixed(3)} ${unidade}`;
-    if (consumoElement) consumoElement.innerHTML = `${quantidadeTotal.toFixed(3)} ${unidade}`;
-    if (totalElement) totalElement.innerHTML = `${quantidadeTotal.toFixed(3)} ${unidade}`;
-    if (mediaElement) mediaElement.innerHTML = `${mediaDiaria.toFixed(3)} ${unidade}/dia`;
+    if (estoqueElement) estoqueElement.innerHTML = `${estoqueAtual.toFixed(2)} ${unidade}`;
+    if (consumoElement) consumoElement.innerHTML = `${quantidadeTotal.toFixed(2)} ${unidade}`;
+    if (totalElement) totalElement.innerHTML = `${quantidadeTotal.toFixed(2)} ${unidade}`;
+    if (mediaElement) mediaElement.innerHTML = `${mediaDiaria.toFixed(2)} ${unidade}/dia`;
     
     console.log('Cards atualizados:', {
-        estoque: `${estoqueAtual.toFixed(3)} ${unidade}`,
-        consumo: `${quantidadeTotal.toFixed(3)} ${unidade}`,
-        media: `${mediaDiaria.toFixed(3)} ${unidade}/dia`
+        estoque: `${estoqueAtual.toFixed(2)} ${unidade}`,
+        consumo: `${quantidadeTotal.toFixed(2)} ${unidade}`,
+        media: `${mediaDiaria.toFixed(2)} ${unidade}/dia`
     });
     
     // Renderizar tabela
@@ -2478,7 +2478,7 @@ function renderizarTabelaConsumo(movimentacoes, produtoId) {
     tbody.innerHTML = movimentacoes.map(mov => {
         const dataFormatada = new Date(mov.dataHora).toLocaleString('pt-BR');
         const produtoNome = mov.produtoNome || mov.produtoId;
-        const quantidade = (mov.quantidade || 0).toFixed(3);
+        const quantidade = (mov.quantidade || 0).toFixed(2);
         const motivo = mov.motivo === 'inventario' ? '🔢 Baixa por Inventário' : 
                       mov.motivo === 'nota_fiscal' ? '📄 Nota Fiscal' : '✏️ Ajuste Manual';
         
@@ -2594,7 +2594,6 @@ async function gerarRelatorio() {
     }
 }
 
-// Relatório de Estoque
 async function gerarRelatorioEstoque() {
     console.log('📦 Gerando relatório de estoque...');
     
@@ -2603,7 +2602,6 @@ async function gerarRelatorioEstoque() {
         return;
     }
     
-    // Classificar produtos por status do estoque
     const produtosComEstoque = produtos.map(p => {
         let status = '';
         let statusClass = '';
@@ -2637,18 +2635,16 @@ async function gerarRelatorioEstoque() {
         };
     });
     
-    // Ordenar por produtos com estoque baixo primeiro
     const ordemStatus = { 'ZERADO': 0, 'BAIXO': 1, 'MÉDIO': 2, 'ALTO': 3, 'SEM MÍNIMO': 4 };
     produtosComEstoque.sort((a, b) => ordemStatus[a.status] - ordemStatus[b.status]);
     
-    // Estatísticas
     const totalProdutos = produtosComEstoque.length;
     const produtosBaixo = produtosComEstoque.filter(p => p.status === 'BAIXO' || p.status === 'ZERADO').length;
     const produtosMedio = produtosComEstoque.filter(p => p.status === 'MÉDIO').length;
     const produtosAlto = produtosComEstoque.filter(p => p.status === 'ALTO').length;
     const valorTotalEstoque = produtosComEstoque.reduce((sum, p) => sum + p.valorEstoque, 0);
     
-    // HTML do relatório
+    // ⭐ ALTERADO: 2 casas decimais ⭐
     const html = `
         <div class="relatorio-titulo">📦 Relatório de Estoque</div>
         <div class="relatorio-subtitulo">Situação atual dos produtos em estoque</div>
@@ -2672,7 +2668,7 @@ async function gerarRelatorioEstoque() {
             </div>
             <div class="resumo-item">
                 <span class="resumo-label">💰 Valor Total Estoque</span>
-                <span class="resumo-valor">R$ ${valorTotalEstoque.toFixed(3)}</span>
+                <span class="resumo-valor">R$ ${valorTotalEstoque.toFixed(2)}</span>
             </div>
         </div>
         
@@ -2693,10 +2689,10 @@ async function gerarRelatorioEstoque() {
                         <tr>
                             <td>${p.codigo || '-'}</span></td>
                             <td><strong>${p.nome}</strong><br><small>${p.categoria || '-'}</small></td>
-                            <td>${(p.estoqueAtual || 0).toFixed(3)} ${p.unidade || 'UN'}</span></td>
-                            <td>${(p.estoqueMinimo || 0).toFixed(3)} ${p.unidade || 'UN'}</span></td>
+                            <td>${(p.estoqueAtual || 0).toFixed(2)} ${p.unidade || 'UN'}</span></td>
+                            <td>${(p.estoqueMinimo || 0).toFixed(2)} ${p.unidade || 'UN'}</span></td>
                             <td><span class="${p.statusClass}">${p.status}</span></td>
-                            <td>R$ ${p.valorEstoque.toFixed(3)}</span></td>
+                            <td>R$ ${p.valorEstoque.toFixed(2)}</span></td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -2707,11 +2703,9 @@ async function gerarRelatorioEstoque() {
     document.getElementById('resultadoRelatorio').innerHTML = html;
 }
 
-// Relatório de Consumo - VERSÃO CORRIGIDA
 async function gerarRelatorioConsumo() {
     console.log('📉 Gerando relatório de consumo...');
     
-    // Obter período
     const periodo = document.getElementById('periodoRelatorio').value;
     const { dataInicio, dataFim, descricaoPeriodo } = calcularPeriodoRelatorio(periodo);
     
@@ -2722,7 +2716,6 @@ async function gerarRelatorioConsumo() {
         return;
     }
     
-    // Buscar movimentações de saída
     const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
     let saidas = [];
     snapshot.forEach(doc => {
@@ -2741,7 +2734,6 @@ async function gerarRelatorioConsumo() {
         return;
     }
     
-    // Agrupar por produto
     const consumoPorProduto = {};
     saidas.forEach(saida => {
         const produtoId = saida.produtoId;
@@ -2762,11 +2754,9 @@ async function gerarRelatorioConsumo() {
         }
     });
     
-    // Converter para array e ordenar por quantidade consumida
     let listaConsumo = Object.values(consumoPorProduto);
     listaConsumo.sort((a, b) => b.quantidade - a.quantidade);
     
-    // Adicionar unidade dos produtos
     listaConsumo = listaConsumo.map(item => {
         let unidade = 'UN';
         if (typeof produtos !== 'undefined') {
@@ -2776,14 +2766,13 @@ async function gerarRelatorioConsumo() {
         return { ...item, unidade };
     });
     
-    // Estatísticas
     const totalConsumido = listaConsumo.reduce((sum, p) => sum + p.quantidade, 0);
     const totalItensConsumidos = listaConsumo.length;
     const mediaPorItem = totalConsumido / totalItensConsumidos;
     const top3 = listaConsumo.slice(0, 3);
-    const topTexto = top3.map((p, i) => `${i+1}º - ${p.nome}: ${p.quantidade.toFixed(3)} ${p.unidade}`).join(' | ');
+    const topTexto = top3.map((p, i) => `${i+1}º - ${p.nome}: ${p.quantidade.toFixed(2)} ${p.unidade}`).join(' | ');
     
-    // HTML do relatório
+    // ⭐ ALTERADO: 2 casas decimais ⭐
     const html = `
         <div class="relatorio-titulo">📉 Relatório de Consumo</div>
         <div class="relatorio-subtitulo">Período: ${descricaoPeriodo}</div>
@@ -2791,7 +2780,7 @@ async function gerarRelatorioConsumo() {
         <div class="resumo-relatorio">
             <div class="resumo-item">
                 <span class="resumo-label">📊 Total Consumido</span>
-                <span class="resumo-valor">${totalConsumido.toFixed(3)} unidades</span>
+                <span class="resumo-valor">${totalConsumido.toFixed(2)} unidades</span>
             </div>
             <div class="resumo-item">
                 <span class="resumo-label">📦 Itens Consumidos</span>
@@ -2799,7 +2788,7 @@ async function gerarRelatorioConsumo() {
             </div>
             <div class="resumo-item">
                 <span class="resumo-label">📈 Média por Item</span>
-                <span class="resumo-valor">${mediaPorItem.toFixed(3)} unid.</span>
+                <span class="resumo-valor">${mediaPorItem.toFixed(2)} unid.</span>
             </div>
             <div class="resumo-item">
                 <span class="resumo-label">🏆 Top 3</span>
@@ -2818,17 +2807,17 @@ async function gerarRelatorioConsumo() {
                         <th>Vezes</th>
                         <th>Média/Uso</th>
                         <th>Último Consumo</th>
-                    </tr>
+                    <tr>
                 </thead>
                 <tbody>
                     ${listaConsumo.map((p, index) => `
                         <tr>
                             <td><strong>${index + 1}º</strong></td>
                             <td><strong>${p.nome}</strong></td>
-                            <td>${p.quantidade.toFixed(3)}</span></td>
+                            <td>${p.quantidade.toFixed(2)}</span></td>
                             <td>${p.unidade}</span></td>
                             <td>${p.vezesConsumido} vez(es)</span></td>
-                            <td>${(p.quantidade / p.vezesConsumido).toFixed(3)}</span></td>
+                            <td>${(p.quantidade / p.vezesConsumido).toFixed(2)}</span></td>
                             <td>${new Date(p.ultimoConsumo).toLocaleDateString('pt-BR')}</span></td>
                         </tr>
                     `).join('')}

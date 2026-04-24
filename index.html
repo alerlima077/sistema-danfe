@@ -728,7 +728,7 @@
                 <div id="abaConsumo" class="aba-conteudo" style="display: none;">
                     <div class="card-consumo">
                         <h3>📊 Controle de Consumo de Produtos</h3>
-                        
+                            
                         <!-- Filtros -->
                         <div class="filtros-consumo">
                             <div class="form-group">
@@ -756,27 +756,27 @@
                             </div>
                             <button id="filtrarConsumoBtn" class="btn-primary" type="button">🔍 Filtrar</button>
                         </div>
-                        
-                        <!-- Cards de Resumo -->
+                            
+                        <!-- Cards de Resumo (valores com 2 casas decimais) -->
                         <div class="resumo-consumo">
                             <div class="resumo-card-consumo">
                                 <span class="resumo-label-consumo">📦 Estoque Atual</span>
-                                <span class="resumo-valor-consumo" id="estoqueAtualConsumo">0 unidades</span>
+                                <span class="resumo-valor-consumo" id="estoqueAtualConsumo">0,00 unidades</span>
                             </div>
                             <div class="resumo-card-consumo">
                                 <span class="resumo-label-consumo">📉 Consumo no Período</span>
-                                <span class="resumo-valor-consumo" id="consumoPeriodo">0 unidades</span>
+                                <span class="resumo-valor-consumo" id="consumoPeriodo">0,00 unidades</span>
                             </div>
                             <div class="resumo-card-consumo">
                                 <span class="resumo-label-consumo">📊 Total Consumido</span>
-                                <span class="resumo-valor-consumo" id="valorConsumidoPeriodo">0 unidades</span>
+                                <span class="resumo-valor-consumo" id="valorConsumidoPeriodo">0,00 unidades</span>
                             </div>
                             <div class="resumo-card-consumo">
                                 <span class="resumo-label-consumo">📈 Média Diária</span>
-                                <span class="resumo-valor-consumo" id="mediaDiaria">0 unidades/dia</span>
+                                <span class="resumo-valor-consumo" id="mediaDiaria">0,00 unidades/dia</span>
                             </div>
                         </div>
-                        
+                            
                         <!-- Tabela de Consumo Detalhado -->
                         <div class="tabela-consumo">
                             <h4>📋 Detalhamento do Consumo</h4>
@@ -792,7 +792,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="consumoTableBody">
-                                        <td><td colspan="5" class="empty-message">Selecione um período e produto para visualizar</td></tr>
+                                        <tr><td colspan="5" class="empty-message">Selecione um período e produto para visualizar</td></tr>
                                     </tbody>
                                 </table>
                             </div>

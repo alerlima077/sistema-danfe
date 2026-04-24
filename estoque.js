@@ -343,7 +343,7 @@ async function salvarMovimentacao(movimentacao) {
     return await registrarMovimentacao(movimentacao);
 }
 
-// Carregar movimentações do Firebase
+// Carregar movimentações do Firebase - VERSÃO CORRIGIDA (FUSO HORÁRIO)
 async function carregarMovimentacoes(filtros = {}) {
     if (typeof db === 'undefined') {
         console.log('Firebase não disponível');
@@ -363,29 +363,34 @@ async function carregarMovimentacoes(filtros = {}) {
         
         console.log(`📦 Total de movimentações: ${todasMovimentacoes.length}`);
         
-        // Aplicar filtros manualmente (frontend)
+        // Aplicar filtros
         let movimentacoesFiltradas = [...todasMovimentacoes];
         
+        // ⭐ CORREÇÃO DO FUSO HORÁRIO ⭐
         // Filtrar por data de início
         if (filtros.dataInicio && filtros.dataInicio !== '') {
-            const dataInicioObj = new Date(filtros.dataInicio);
-            dataInicioObj.setHours(0, 0, 0, 0);
+            // Criar data no fuso local (Brasil)
+            const [ano, mes, dia] = filtros.dataInicio.split('-');
+            const dataInicioLocal = new Date(ano, mes - 1, dia, 0, 0, 0);
+            
             movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
-                const movData = new Date(mov.dataHora);
-                return movData >= dataInicioObj;
+                const dataMov = new Date(mov.dataHora);
+                return dataMov >= dataInicioLocal;
             });
-            console.log(`📅 Filtro data início: ${movimentacoesFiltradas.length} movimentações`);
+            console.log(`📅 Filtro data início (${filtros.dataInicio}): ${movimentacoesFiltradas.length} movimentações`);
         }
         
         // Filtrar por data de fim
         if (filtros.dataFim && filtros.dataFim !== '') {
-            const dataFimObj = new Date(filtros.dataFim);
-            dataFimObj.setHours(23, 59, 59, 999);
+            const [ano, mes, dia] = filtros.dataFim.split('-');
+            // Ir até o final do dia (23:59:59)
+            const dataFimLocal = new Date(ano, mes - 1, dia, 23, 59, 59);
+            
             movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
-                const movData = new Date(mov.dataHora);
-                return movData <= dataFimObj;
+                const dataMov = new Date(mov.dataHora);
+                return dataMov <= dataFimLocal;
             });
-            console.log(`📅 Filtro data fim: ${movimentacoesFiltradas.length} movimentações`);
+            console.log(`📅 Filtro data fim (${filtros.dataFim}): ${movimentacoesFiltradas.length} movimentações`);
         }
         
         // Filtrar por produto

@@ -869,11 +869,13 @@ function getDiasIntervalo() {
 
 // Calcular subtotal de um produto
 function calcularSubtotal(produtoItem) {
-    const quantidade = converterParaNumero(document.getElementById('quantidade').value);
+    const quantidade = converterParaNumero(produtoItem.querySelector('.produto-quantidade').value);
     const preco = converterParaNumero(produtoItem.querySelector('.produto-preco').value);
     const subtotal = quantidade * preco;
     const subtotalInput = produtoItem.querySelector('.produto-subtotal');
-    subtotalInput.value = `R$ ${subtotal.toFixed(3)}`;
+    if (subtotalInput) {
+        subtotalInput.value = formatarValorBrasileiro(subtotal);
+    }
     return subtotal;
 }
 
@@ -881,12 +883,14 @@ function calcularSubtotal(produtoItem) {
 function calcularTotalNota() {
     let total = 0;
     document.querySelectorAll('.produto-item').forEach(produtoItem => {
-        const quantidade = converterParaNumero(document.getElementById('quantidade').value);
+        const quantidade = converterParaNumero(produtoItem.querySelector('.produto-quantidade').value);
         const preco = converterParaNumero(produtoItem.querySelector('.produto-preco').value);
         total += quantidade * preco;
     });
     const totalInput = document.getElementById('totalNota');
-    if (totalInput) totalInput.value = `R$ ${total.toFixed(3)}`;
+    if (totalInput) {
+        totalInput.value = formatarValorBrasileiro(total);
+    }
     return total;
 }
 
@@ -1302,7 +1306,6 @@ function renderNotas() {
                                         <div class="action-buttons">
                                             <button class="btn-edit" onclick="editarNota('${nota.firebaseId || nota.id}')">✏️ Editar</button>
                                             <button class="btn-delete" onclick="excluirNota('${nota.firebaseId || nota.id}')">🗑️ Excluir</button>
-                                            <button class="btn-boleto" onclick="verBoletosNota('${nota.firebaseId || nota.id}')">🎫 Boletos</button>
                                         </div>
                                      </td>
                                 </tr>

@@ -352,23 +352,74 @@ async function salvarPagamentoFirebase(pagamento) {
     }
 }
 
-// Excluir pagamento do Firebase
+// ========== EXCLUIR PAGAMENTO DO FIREBASE (CORRIGIDO) ==========
 async function excluirPagamentoFirebase(pagamentoId) {
-    if (typeof db !== 'undefined') {
-        await db.collection('pagamentos').doc(pagamentoId).delete();
-    } else {
-        pagamentos = pagamentos.filter(p => p.id !== pagamentoId);
+    if (typeof db === 'undefined') {
+        console.log('Firebase não disponível');
+        return false;
+    }
+    
+    try {
+        console.log('🗑️ Excluindo pagamento:', pagamentoId);
+        
+        // Verificar se o documento existe
+        const docRef = db.collection('pagamentos').doc(pagamentoId);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) {
+            console.log('⚠️ Documento não encontrado!');
+            return false;
+        }
+        
+        // Excluir
+        await docRef.delete();
+        console.log('✅ Pagamento excluído com sucesso!');
+        
+        // Recarregar o array local
+        const snapshot = await db.collection('pagamentos').orderBy('dataHora', 'desc').get();
+        pagamentos = [];
+        snapshot.forEach(doc => {
+            pagamentos.push({ id: doc.id, ...doc.data() });
+        });
+        
+        console.log(`📦 Array atualizado: ${pagamentos.length} pagamentos`);
+        
+        // Renderizar novamente
+        if (typeof renderSangria === 'function') {
+            renderSangria();
+        }
+        
+        // Atualizar selects
+        if (typeof atualizarSelectMesesSangria === 'function') {
+            atualizarSelectMesesSangria();
+        }
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Erro ao excluir:', error);
+        return false;
     }
 }
 
 // ========== FUNÇÕES DE RENDERIZAÇÃO DA SANGRIA ==========
 
+// ========== RENDERIZAR SANGRIA (PAGAMENTOS) ==========
 function renderSangria() {
     const container = document.getElementById('sangriaAgrupada');
     if (!container) return;
     
     if (!verificarPermissao()) {
         container.innerHTML = '<div class="sem-boletos">Faça login para visualizar os pagamentos</div>';
+        return;
+    }
+    
+    // Verificar se há pagamentos
+    if (!pagamentos || pagamentos.length === 0) {
+        container.innerHTML = '<div class="sem-boletos">📭 Nenhum pagamento registrado</div>';
+        document.getElementById('totalMesSangria').innerHTML = 'R$ 0,00';
+        document.getElementById('mediaDiaSangria').innerHTML = 'R$ 0,00';
+        document.getElementById('totalPagamentosMes').innerHTML = '0';
         return;
     }
     
@@ -391,9 +442,9 @@ function renderSangria() {
     }
     
     if (pagamentosFiltrados.length === 0) {
-        container.innerHTML = '<div class="sem-boletos">📭 Nenhum pagamento registrado</div>';
-        document.getElementById('totalMesSangria').innerHTML = 'R$ 0,000';
-        document.getElementById('mediaDiaSangria').innerHTML = 'R$ 0,000';
+        container.innerHTML = '<div class="sem-boletos">📭 Nenhum pagamento encontrado com os filtros selecionados</div>';
+        document.getElementById('totalMesSangria').innerHTML = 'R$ 0,00';
+        document.getElementById('mediaDiaSangria').innerHTML = 'R$ 0,00';
         document.getElementById('totalPagamentosMes').innerHTML = '0';
         return;
     }
@@ -407,13 +458,13 @@ function renderSangria() {
         pagamentosPorDia[diaStr].push(pag);
     });
     
-    // Calcular totais (usando valorTotal se existir, senão usa valor)
-    const totalMes = pagamentosFiltrados.reduce((sum, p) => sum + (p.valorTotal || p.valor), 0);
+    // Calcular totais (usando valorTotal ou valor, com 2 casas decimais)
+    const totalMes = pagamentosFiltrados.reduce((sum, p) => sum + (p.valorTotal || p.valor || 0), 0);
     const diasUnicos = Object.keys(pagamentosPorDia).length;
     const mediaDia = diasUnicos > 0 ? totalMes / diasUnicos : 0;
     
-    document.getElementById('totalMesSangria').innerHTML = `R$ ${totalMes.toFixed(3)}`;
-    document.getElementById('mediaDiaSangria').innerHTML = `R$ ${mediaDia.toFixed(3)}`;
+    document.getElementById('totalMesSangria').innerHTML = `R$ ${totalMes.toFixed(2)}`;
+    document.getElementById('mediaDiaSangria').innerHTML = `R$ ${mediaDia.toFixed(2)}`;
     document.getElementById('totalPagamentosMes').innerHTML = pagamentosFiltrados.length;
     
     // Ordenar dias (mais recente primeiro)
@@ -423,7 +474,7 @@ function renderSangria() {
     
     diasOrdenados.forEach(dia => {
         const pagamentosDia = pagamentosPorDia[dia];
-        const totalDia = pagamentosDia.reduce((sum, p) => sum + (p.valorTotal || p.valor), 0);
+        const totalDia = pagamentosDia.reduce((sum, p) => sum + (p.valorTotal || p.valor || 0), 0);
         const dataFormatada = formatarDataCompleta(dia);
         
         const grupoDiv = document.createElement('div');
@@ -431,7 +482,7 @@ function renderSangria() {
         grupoDiv.innerHTML = `
             <div class="header-dia-sangria" onclick="toggleGrupoDiaSangria(this)">
                 <h4>📅 ${dataFormatada}</h4>
-                <span class="total-dia">💰 R$ ${totalDia.toFixed(3)}</span>
+                <span class="total-dia">💰 R$ ${totalDia.toFixed(2)}</span>
             </div>
             <div class="conteudo-dia-sangria">
                 <div class="table-responsive">
@@ -439,31 +490,25 @@ function renderSangria() {
                         <thead>
                             <tr>
                                 <th>Hora</th>
-                                <th>Estabelecimento</th>
-                                <th>Itens</th>
+                                <th>Descrição</th>
                                 <th>Categoria</th>
                                 <th>Valor</th>
                                 <th>Ações</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${pagamentosDia.map(pag => `
-                                <tr>
-                                    <td>${formatarHora(pag.dataHora)}</span></td>
-                                    <td>
-                                        <strong>${pag.estabelecimento || pag.descricao.split(' - ')[0]}</strong>
-                                    </td>
-                                    <td>
-                                        <div title="${pag.itens ? pag.itens.map(i => `${i.descricao}: R$ ${i.valor.toFixed(3)}`).join('\n') : pag.descricao}">
-                                            ${pag.itens ? pag.itens.map(i => i.descricao).join(', ') : pag.descricao}
-                                            ${pag.itens && pag.itens.length > 1 ? `<br><small style="color: #666; cursor: help;">📋 ${pag.itens.length} itens</small>` : ''}
-                                        </div>
-                                    </td>
-                                    <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></span></td>
-                                    <td>R$ ${(pag.valorTotal || pag.valor).toFixed(3)}</span></td>
-                                    <td><button class="btn-delete-pagamento" onclick="excluirPagamento('${pag.id}')" title="Excluir">🗑️</button></td>
-                                </tr>
-                            `).join('')}
+                            ${pagamentosDia.map(pag => {
+                                const valorTotal = pag.valorTotal || pag.valor || 0;
+                                return `
+                                    <tr>
+                                        <td>${formatarHora(pag.dataHora)}</span></td>
+                                        <td><strong>${pag.descricao || pag.estabelecimento || '-'}</strong></td>
+                                        <td><span class="badge-categoria categoria-${pag.categoria}">${getNomeCategoria(pag.categoria)}</span></td>
+                                        <td>R$ ${valorTotal.toFixed(2)}</span></td>
+                                        <td><button class="btn-delete-pagamento" onclick="excluirPagamento('${pag.id}')" title="Excluir">🗑️</button></td>
+                                    </tr>
+                                `;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -596,32 +641,63 @@ async function adicionarPagamento() {
         document.getElementById('dataHoraPagamento').value = '';
         document.getElementById('totalPagamento').value = 'R$ 0,000';
         
-        mostrarNotificacao(`Pagamento de R$ ${totalPagamento.toFixed(3)} registrado com sucesso!`, 'success');
+        mostrarNotificacao(`Pagamento de R$ ${totalPagamento.toFixed(2)} registrado com sucesso!`, 'success');
     } catch (error) {
         mostrarNotificacao('Erro ao registrar pagamento!', 'error');
     }
 }
 
-// Excluir pagamento
+// Função corrigida - usa o firebaseId se existir
 window.excluirPagamento = async function(pagamentoId) {
-    if (!verificarPermissao()) return;
+    console.log('🗑️ Excluindo pagamento - ID recebido:', pagamentoId);
     
-    if (confirm('Excluir este pagamento?')) {
-        try {
-            await excluirPagamentoFirebase(pagamentoId);
-            
-            if (typeof db !== 'undefined') {
-                await carregarPagamentosFirebase();
-            } else {
-                pagamentos = pagamentos.filter(p => p.id != pagamentoId);
-                renderSangria();
-                atualizarSelectMesesSangria();
+    if (!confirm('Excluir este pagamento permanentemente?')) return;
+    
+    try {
+        // Buscar o documento no Firebase usando o ID correto
+        // O pagamentoId pode ser o ID do Firebase ou o ID numérico
+        let firebaseId = pagamentoId;
+        
+        // Verificar se é um ID numérico (antigo)
+        if (!isNaN(pagamentoId)) {
+            // Procurar o pagamento no array pelo ID numérico
+            const pagamento = pagamentos.find(p => p.id == pagamentoId);
+            if (pagamento && pagamento.firebaseId) {
+                firebaseId = pagamento.firebaseId;
+            } else if (pagamento) {
+                firebaseId = pagamento.id;
             }
-            
-            mostrarNotificacao('Pagamento excluído!', 'success');
-        } catch (error) {
-            mostrarNotificacao('Erro ao excluir pagamento!', 'error');
+            console.log('ID convertido:', pagamentoId, '->', firebaseId);
         }
+        
+        // Excluir do Firebase
+        await db.collection('pagamentos').doc(firebaseId).delete();
+        console.log('✅ Excluído do Firebase');
+        
+        // Recarregar a lista
+        const snapshot = await db.collection('pagamentos').orderBy('dataHora', 'desc').get();
+        pagamentos = [];
+        snapshot.forEach(doc => {
+            pagamentos.push({ id: doc.id, firebaseId: doc.id, ...doc.data() });
+        });
+        
+        console.log(`📦 ${pagamentos.length} pagamentos restantes`);
+        
+        // Recarregar a tela
+        if (typeof renderSangria === 'function') {
+            renderSangria();
+        }
+        
+        // Atualizar resumo
+        if (typeof atualizarResumoSangria === 'function') {
+            atualizarResumoSangria();
+        }
+        
+        mostrarNotificacao('✅ Pagamento excluído com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        mostrarNotificacao('❌ Erro ao excluir pagamento!', 'error');
     }
 };
 
@@ -1000,15 +1076,16 @@ function calcularSubtotalItemPagamento(itemPagamento) {
     return valor;
 }
 
-// Calcular total do pagamento
 function calcularTotalPagamento() {
     let total = 0;
     document.querySelectorAll('.item-pagamento').forEach(item => {
-        const valor = parseFloat(item.querySelector('.item-valor').value) || 0;
+        const valor = converterParaNumero(item.querySelector('.item-valor').value) || 0;
         total += valor;
     });
     const totalInput = document.getElementById('totalPagamento');
-    if (totalInput) totalInput.value = `R$ ${total.toFixed(3)}`;
+    if (totalInput) {
+        totalInput.value = `R$ ${total.toFixed(2)}`;
+    }
     return total;
 }
 
@@ -2808,3 +2885,26 @@ function corrigirMaiusculasAoColar() {
 document.addEventListener('DOMContentLoaded', function() {
     corrigirMaiusculasAoColar();
 });
+
+async function carregarPagamentosFirebase() {
+    if (typeof db === 'undefined') return;
+    
+    try {
+        const snapshot = await db.collection('pagamentos').orderBy('dataHora', 'desc').get();
+        pagamentos = [];
+        snapshot.forEach(doc => {
+            pagamentos.push({ 
+                id: doc.id,           // ⭐ ADICIONAR ESTA LINHA
+                firebaseId: doc.id,   // ⭐ ADICIONAR ESTA LINHA
+                ...doc.data() 
+            });
+        });
+        console.log(`${pagamentos.length} pagamentos carregados`);
+        
+        if (typeof renderSangria === 'function') {
+            renderSangria();
+        }
+    } catch (error) {
+        console.error('Erro ao carregar pagamentos:', error);
+    }
+}

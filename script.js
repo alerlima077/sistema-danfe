@@ -8,6 +8,125 @@ let boletos = {};
 let pagamentos = [];
 let syncInProgress = false;
 
+// ========== FUNÇÕES DE FORMATAÇÃO DE VALORES BRASILEIROS ==========
+
+// Converter string brasileira para número
+function converterParaNumero(valorStr) {
+    if (!valorStr || valorStr === '') return 0;
+    
+    // Converter para string
+    let str = String(valorStr).trim();
+    
+    // Substituir ponto por vazio (remove separador de milhar)
+    // Depois substituir vírgula por ponto (decimal)
+    let numeroStr = str.replace(/\./g, '').replace(',', '.');
+    
+    let resultado = parseFloat(numeroStr);
+    return isNaN(resultado) ? 0 : resultado;
+}
+
+// Formatar número para exibição brasileira (ex: 4.5 -> "4,50", 10 -> "10,00", 1234.56 -> "1.234,56")
+function formatarValorBrasileiro(valor) {
+    if (valor === undefined || valor === null || valor === 0) return '0,00';
+    
+    // Garantir 2 casas decimais
+    let valorFormatado = valor.toFixed(2);
+    
+    // Separar parte inteira e decimal
+    let partes = valorFormatado.split('.');
+    let inteiro = partes[0];
+    let decimal = partes[1];
+    
+    // Converter inteiro para string e adicionar pontos de milhar
+    let inteiroStr = inteiro.toString();
+    let resultado = '';
+    
+    // Adicionar pontos de milhar da direita para esquerda
+    for (let i = inteiroStr.length - 1, j = 0; i >= 0; i--, j++) {
+        if (j > 0 && j % 3 === 0) {
+            resultado = '.' + resultado;
+        }
+        resultado = inteiroStr[i] + resultado;
+    }
+    
+    return resultado + ',' + decimal;
+}
+
+// Formatar quantidade (3 casas decimais)
+function formatarQuantidadeBrasileira(valor) {
+    if (valor === undefined || valor === null || valor === 0) return '0,000';
+    
+    let valorFormatado = valor.toFixed(3);
+    let partes = valorFormatado.split('.');
+    let inteiro = partes[0];
+    let decimal = partes[1];
+    
+    // Adicionar pontos de milhar
+    inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    return inteiro + ',' + decimal;
+}
+
+// Configurar máscara para campos de valor (2 casas decimais)
+function configurarMascaraValor(inputElement) {
+    if (!inputElement) return;
+    
+    inputElement.addEventListener('input', function(e) {
+        let valor = this.value.replace(/[^0-9,]/g, '');
+        
+        // Garantir apenas uma vírgula
+        let partes = valor.split(',');
+        if (partes.length > 2) {
+            valor = partes[0] + ',' + partes.slice(1).join('');
+        }
+        
+        // Limitar decimais a 2 casas
+        if (partes.length === 2 && partes[1].length > 2) {
+            valor = partes[0] + ',' + partes[1].substring(0, 2);
+        }
+        
+        this.value = valor;
+    });
+    
+    inputElement.addEventListener('blur', function() {
+        let valor = this.value;
+        if (valor === '' || valor === '0' || valor === '0,') {
+            this.value = '0,00';
+        } else if (!valor.includes(',')) {
+            this.value = valor + ',00';
+        }
+    });
+}
+
+// Configurar máscara para quantidade (3 casas decimais)
+function configurarMascaraQuantidade(inputElement) {
+    if (!inputElement) return;
+    
+    inputElement.addEventListener('input', function(e) {
+        let valor = this.value.replace(/[^0-9,]/g, '');
+        
+        let partes = valor.split(',');
+        if (partes.length > 2) {
+            valor = partes[0] + ',' + partes.slice(1).join('');
+        }
+        
+        if (partes.length === 2 && partes[1].length > 3) {
+            valor = partes[0] + ',' + partes[1].substring(0, 3);
+        }
+        
+        this.value = valor;
+    });
+    
+    inputElement.addEventListener('blur', function() {
+        let valor = this.value;
+        if (valor === '' || valor === '0' || valor === '0,') {
+            this.value = '0,000';
+        } else if (!valor.includes(',')) {
+            this.value = valor + ',000';
+        }
+    });
+}
+
 // ========== FUNÇÕES DO FIREBASE ==========
 
 // Carregar dados do Firebase
@@ -705,8 +824,8 @@ function formatarData(data) {
 
 // ========== CÁLCULO AUTOMÁTICO DO VALOR DA PARCELA ==========
 function calcularValorParcela() {
-    const valorBoleto = parseFloat(document.getElementById('valorBoleto').value);
-    const numParcelas = parseInt(document.getElementById('numParcelas').value);
+    const valorBoleto = converterParaNumero(document.getElementById('valorBoleto').value);
+    const numParcelas = converterParaNumero(document.getElementById('numParcelas').value);
     const valorParcelaInput = document.getElementById('valorParcela');
     
     if (valorBoleto && numParcelas && numParcelas > 0) {
@@ -750,8 +869,8 @@ function getDiasIntervalo() {
 
 // Calcular subtotal de um produto
 function calcularSubtotal(produtoItem) {
-    const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
-    const preco = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+    const quantidade = converterParaNumero(document.getElementById('quantidade').value);
+    const preco = converterParaNumero(produtoItem.querySelector('.produto-preco').value);
     const subtotal = quantidade * preco;
     const subtotalInput = produtoItem.querySelector('.produto-subtotal');
     subtotalInput.value = `R$ ${subtotal.toFixed(3)}`;
@@ -762,8 +881,8 @@ function calcularSubtotal(produtoItem) {
 function calcularTotalNota() {
     let total = 0;
     document.querySelectorAll('.produto-item').forEach(produtoItem => {
-        const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
-        const preco = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+        const quantidade = converterParaNumero(document.getElementById('quantidade').value);
+        const preco = converterParaNumero(produtoItem.querySelector('.produto-preco').value);
         total += quantidade * preco;
     });
     const totalInput = document.getElementById('totalNota');
@@ -790,7 +909,7 @@ function adicionarProduto() {
             </div>
             <div class="form-group">
                 <label>Quantidade</label>
-                <input type="number" class="produto-quantidade" step="0.01" placeholder="Qtd" required>
+                <input type="text" class="produto-quantidade input-quantidade" placeholder="0,000" required style="text-align: right;">
             </div>
             <div class="form-group">
                 <label>Unidade</label>
@@ -805,7 +924,7 @@ function adicionarProduto() {
             </div>
             <div class="form-group">
                 <label>Preço Unitário</label>
-                <input type="number" class="produto-preco" step="0.01" placeholder="R$" required>
+                <input type="text" class="produto-preco input-valor" placeholder="0,00" required style="text-align: right;">
             </div>
             <div class="form-group">
                 <label>Subtotal</label>
@@ -851,9 +970,9 @@ function coletarProdutos() {
     const produtos = [];
     document.querySelectorAll('.produto-item').forEach(produtoItem => {
         const descricao = produtoItem.querySelector('.produto-descricao').value;
-        const quantidade = parseFloat(produtoItem.querySelector('.produto-quantidade').value) || 0;
+        const quantidade = converterParaNumero(produtoItem.querySelector('.produto-quantidade').value);
         const unidade = produtoItem.querySelector('.produto-unidade').value;
-        const precoUnitario = parseFloat(produtoItem.querySelector('.produto-preco').value) || 0;
+        const precoUnitario = converterParaNumero(produtoItem.querySelector('.produto-preco').value);
         const subtotal = quantidade * precoUnitario;
         
         if (descricao) {
@@ -916,7 +1035,7 @@ function adicionarItemPagamento() {
             </div>
             <div class="form-group">
                 <label>Valor</label>
-                <input type="number" class="item-valor" step="0.001" placeholder="R$ 0,000" required>
+                <input type="text" class="item-valor input-valor" placeholder="0,00" required style="text-align: right;">
             </div>
         </div>
     `;
@@ -979,8 +1098,8 @@ async function adicionarParcelas() {
         return;
     }
     
-    const valorBoleto = parseFloat(document.getElementById('valorBoleto').value);
-    const numParcelas = parseInt(document.getElementById('numParcelas').value);
+    const valorBoleto = converterParaNumero(document.getElementById('valorBoleto').value);
+    const numParcelas = converterParaNumero(document.getElementById('numParcelas').value);
     const dataInicial = document.getElementById('parcelaData').value;
     const diasIntervalo = getDiasIntervalo();
     
@@ -1736,7 +1855,7 @@ function carregarValorNota() {
     if (notaId) {
         const nota = notas.find(n => (n.firebaseId === notaId) || (n.id == notaId));
         if (nota && nota.precoTotal) {
-            valorBoletoInput.value = parseFloat(nota.precoTotal);
+            valorBoletoInput.value = formatarValorBrasileiro(nota.precoTotal);
             calcularValorParcela();
             mostrarNotificacao(`Valor da nota R$ ${parseFloat(nota.precoTotal).toFixed(2)} carregado!`, 'info');
         }
@@ -1957,8 +2076,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (diasPersonalizado) {
         diasPersonalizado.addEventListener('input', () => {
             if (diasPersonalizado.value) {
-                const valorParcela = parseFloat(document.getElementById('valorBoleto').value);
-                const numParcelas = parseInt(document.getElementById('numParcelas').value);
+                const valorParcela = converterParaNumero(document.getElementById('valorBoleto').value);
+                const numParcelas = converterParaNumero(document.getElementById('numParcelas').value);
                 if (valorParcela && numParcelas) {
                     calcularValorParcela();
                 }

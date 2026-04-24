@@ -23,6 +23,12 @@ body {
     padding: 20px;
 }
 
+/* Campos de valor alinhados à direita */
+.input-valor, .input-quantidade, input[id*="valor"], input[id*="preco"], input[id*="quantidade"] {
+    text-align: right !important;
+    font-family: monospace;
+}
+
 .app-container {
     max-width: 1400px;
     margin: 0 auto;

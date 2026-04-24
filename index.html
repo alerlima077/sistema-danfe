@@ -262,7 +262,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Quantidade</label>
-                                        <input type="number" class="produto-quantidade" step="0.001" placeholder="Qtd" required>
+                                        <input type="text" class="produto-quantidade input-quantidade" placeholder="0,000" required style="text-align: right;">
                                     </div>
                                     <div class="form-group">
                                         <label>Unidade</label>
@@ -277,7 +277,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Preço Unitário</label>
-                                        <input type="number" class="produto-preco" step="0.001" placeholder="R$" required>
+                                        <input type="text" class="produto-preco input-valor" placeholder="0,00" required style="text-align: right;">
                                     </div>
                                     <div class="form-group">
                                         <label>Subtotal</label>
@@ -345,7 +345,7 @@
                         </div>
                         <div class="form-group">
                             <label>Valor do Boleto *</label>
-                            <input type="number" id="valorBoleto" step="0.001" placeholder="R$ 0,000">
+                            <input type="text" id="valorBoleto" class="input-valor" placeholder="0,00" style="text-align: right;">
                         </div>
                         <div class="form-group">
                             <label>Número de Parcelas *</label>
@@ -367,7 +367,7 @@
                         </div>
                         <div class="form-group">
                             <label>Valor da Parcela</label>
-                            <input type="text" id="valorParcela" readonly disabled placeholder="R$ 0,000">
+                            <input type="text" id="valorParcela" readonly disabled placeholder="R$ 0,00">
                         </div>
                         <div class="form-group">
                             <label>Data do Primeiro Vencimento *</label>
@@ -435,7 +435,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label>Valor</label>
-                                        <input type="number" class="item-valor" step="0.001" placeholder="R$ 0,000" required>
+                                        <input type="text" class="item-valor input-valor" placeholder="0,00" required style="text-align: right;">
                                     </div>
                                 </div>
                             </div>
@@ -571,12 +571,12 @@
                             
                             <div class="form-group full-width">
                                 <label>💰 Preço de Custo (R$)</label>
-                                <input type="number" id="produtoPrecoCusto" step="0.001" placeholder="0,000">
+                                <input type="text" id="produtoPrecoCusto" class="input-valor" placeholder="0,00" style="text-align: right;">
                             </div>
                             
                             <div class="form-group">
                                 <label>Estoque Mínimo</label>
-                                <input type="number" id="produtoEstoqueMinimo" step="0.001" placeholder="Quantidade mínima">
+                                <input type="text" id="produtoEstoqueMinimo" class="input-quantidade" placeholder="0,000" style="text-align: right;">
                             </div>
                             
                             <div class="form-group full-width">
@@ -669,7 +669,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Quantidade Contada *</label>
-                                <input type="number" id="quantidadeContada" step="0.001" placeholder="Digite a quantidade contada" required>
+                                <input type="text" id="quantidadeContada" class="input-quantidade" placeholder="0,000" required style="text-align: right;">
                             </div>
                             <div class="form-group">
                                 <label>Diferença</label>

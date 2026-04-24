@@ -161,8 +161,8 @@ function calcularMargemLucro(precoCusto, precoVenda) {
 }
 
 function atualizarMargemInfo() {
-    const precoCusto = parseFloat(document.getElementById('produtoPrecoCusto')?.value) || 0;
-    const precoVenda = parseFloat(document.getElementById('produtoPrecoVenda')?.value) || 0;
+    const precoCusto = converterParaNumero(document.getElementById('edit_precoCusto').value);
+    const precoVenda = converterParaNumero(document.getElementById('produtoPrecoVenda').value);
     const margemDiv = document.getElementById('margemInfo');
     
     console.log('Calculando margem:', { precoCusto, precoVenda }); // Debug
@@ -567,7 +567,7 @@ function calcularDiferenca() {
 // Salvar contagem
 async function salvarContagem() {
     const produtoId = document.getElementById('contagemProduto').value;
-    const quantidadeContada = parseFloat(document.getElementById('quantidadeContada').value);
+    const quantidadeContada = converterParaNumero(document.getElementById('quantidadeContada').value);
     const observacao = document.getElementById('observacaoContagem').value;
     
     if (!produtoId) {
@@ -689,7 +689,6 @@ window.excluirInventario = async function(inventarioId) {
     }
 };
 
-// Renderizar produtos na tabela - SEM MARGEM
 function renderizarProdutos() {
     const tbody = document.getElementById('produtosTableBody');
     if (!tbody) return;
@@ -700,7 +699,6 @@ function renderizarProdutos() {
     }
     
     tbody.innerHTML = produtos.map(produto => {
-        // Calcular classe de cor do estoque
         let estoqueClass = '';
         let alertaTexto = '';
         const estoqueAtual = produto.estoqueAtual || 0;
@@ -719,16 +717,21 @@ function renderizarProdutos() {
             }
         }
         
+        // Usar as funções de formatação brasileira
+        const estoqueFormatado = formatarQuantidadeBrasileira(estoqueAtual);
+        const custoFormatado = formatarValorBrasileiro(produto.precoCusto || 0);
+        const minimoFormatado = formatarQuantidadeBrasileira(estoqueMinimo);
+        
         return `
             <tr>
                 <td>${produto.codigo || '-'}</td>
                 <td><strong>${produto.nome}</strong><br><small>${produto.categoria || '-'}</small></td>
                 <td class="${estoqueClass}">
-                    <strong>${estoqueAtual.toFixed(3)} ${produto.unidade || 'UN'}</strong>
+                    <strong>${estoqueFormatado} ${produto.unidade || 'UN'}</strong>
                     ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
-                    ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${estoqueMinimo.toFixed(3)}</small>` : ''}
+                    ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${minimoFormatado} ${produto.unidade || 'UN'}</small>` : ''}
                 </td>
-                <td>R$ ${(produto.precoCusto || 0).toFixed(3)}</td>
+                <td>R$ ${custoFormatado}</span></td>
                 <td>
                     <div class="action-buttons">
                         <button class="btn-edit" onclick="editarProduto('${produto.id}')">✏️ Editar</button>
@@ -783,74 +786,118 @@ function atualizarSelectsProdutos() {
 
 // ========== CRUD DE PRODUTOS ==========
 
-// Cadastrar produto - VERSÃO CORRIGIDA (SEM PREÇO DE VENDA E MARGEM)
-const salvarProdutoBtn = document.getElementById('salvarProdutoBtn');
-if (salvarProdutoBtn) {
-    // Remover event listeners antigos para evitar duplicação
-    const novoBotao = salvarProdutoBtn.cloneNode(true);
-    salvarProdutoBtn.parentNode.replaceChild(novoBotao, salvarProdutoBtn);
+// ========== CADASTRO DE PRODUTO - VERSÃO CORRIGIDA ==========
+
+// Aguardar o DOM carregar completamente
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 Inicializando cadastro de produto...');
     
-    novoBotao.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (!verificarPermissao()) return;
-        
-        // Pegar valores dos campos
-        const codigo = document.getElementById('produtoCodigo').value;
-        const nome = document.getElementById('produtoNome').value;
-        const categoria = document.getElementById('produtoCategoria').value;
-        const unidade = document.getElementById('produtoUnidade').value;
-        const precoCusto = parseFloat(document.getElementById('produtoPrecoCusto').value) || 0;
-        const estoqueMinimo = parseFloat(document.getElementById('produtoEstoqueMinimo').value) || 0;
-        
-        // Validações
-        if (!codigo) {
-            alert('Preencha o código do produto!');
-            return;
-        }
-        
-        if (!nome) {
-            alert('Preencha o nome do produto!');
-            return;
-        }
-        
-        // Criar objeto do produto (SEM preçoVenda e SEM margemLucro)
-        const produto = {
-            codigo: codigo.toUpperCase(),
-            nome: nome.toUpperCase(),
-            categoria: categoria,
-            unidade: unidade,
-            precoCusto: precoCusto,
-            estoqueAtual: 0,
-            estoqueMinimo: estoqueMinimo,
-            createdAt: new Date().toISOString()
-        };
-        
-        console.log('Produto a ser salvo:', produto);
-        
-        try {
-            await salvarProdutoFirebase(produto);
-            await carregarProdutos();
+    // Tentar encontrar o botão várias vezes
+    let tentativas = 0;
+    const interval = setInterval(function() {
+        const btnSalvar = document.getElementById('salvarProdutoBtn');
+        if (btnSalvar) {
+            clearInterval(interval);
+            console.log('✅ Botão salvarProdutoBtn encontrado!');
             
-            // Limpar formulário
-            document.getElementById('produtoForm').reset();
+            // Remover event listeners antigos
+            const novoBtn = btnSalvar.cloneNode(true);
+            btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
             
-            mostrarNotificacao('Produto cadastrado com sucesso!', 'success');
-            
-            // Se o Dashboard estiver visível, atualizar
-            if (document.getElementById('dashboardPage') && document.getElementById('dashboardPage').style.display === 'block') {
-                if (typeof carregarDashboard === 'function') {
-                    await carregarDashboard();
+            novoBtn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('👉 Botão CADASTRAR PRODUTO clicado!');
+                
+                // Coletar dados
+                const codigo = document.getElementById('produtoCodigo')?.value;
+                const nome = document.getElementById('produtoNome')?.value;
+                const categoria = document.getElementById('produtoCategoria')?.value;
+                const unidade = document.getElementById('produtoUnidade')?.value;
+                const precoCusto = converterParaNumero(document.getElementById('produtoPrecoCusto')?.value);
+                const estoqueMinimo = converterParaNumero(document.getElementById('produtoEstoqueMinimo')?.value);
+                
+                console.log('Dados coletados:', { codigo, nome, categoria, unidade, precoCusto, estoqueMinimo });
+                
+                // Validações
+                if (!codigo) {
+                    alert('❌ Preencha o código do produto!');
+                    return;
                 }
-            }
-            
-        } catch (error) {
-            console.error('Erro ao cadastrar produto:', error);
-            mostrarNotificacao('Erro ao cadastrar produto!', 'error');
+                if (!nome) {
+                    alert('❌ Preencha o nome do produto!');
+                    return;
+                }
+                if (precoCusto === 0) {
+                    alert('⚠️ Preço de custo está zerado. Deseja continuar?');
+                    // Não retorna, apenas avisa
+                }
+                
+                const produto = {
+                    codigo: codigo.toUpperCase(),
+                    nome: nome.toUpperCase(),
+                    categoria: categoria,
+                    unidade: unidade,
+                    precoCusto: precoCusto,
+                    estoqueAtual: 0,
+                    estoqueMinimo: estoqueMinimo,
+                    createdAt: new Date().toISOString()
+                };
+                
+                console.log('Produto a salvar:', produto);
+                
+                try {
+                    // Salvar no Firebase
+                    if (typeof db !== 'undefined') {
+                        const docRef = await db.collection('produtos').add(produto);
+                        console.log('✅ Produto salvo com ID:', docRef.id);
+                    } else {
+                        console.log('Firebase não disponível');
+                        produtos.push(produto);
+                    }
+                    
+                    // Recarregar lista
+                    if (typeof carregarProdutos === 'function') {
+                        await carregarProdutos();
+                    }
+                    
+                    // Limpar formulário
+                    const form = document.getElementById('produtoForm');
+                    if (form) form.reset();
+                    
+                    // Atualizar campo de preço para 0,00
+                    const precoInput = document.getElementById('produtoPrecoCusto');
+                    if (precoInput) precoInput.value = '0,00';
+                    
+                    // Atualizar campo de estoque mínimo
+                    const minInput = document.getElementById('produtoEstoqueMinimo');
+                    if (minInput) minInput.value = '0,000';
+                    
+                    alert('✅ Produto cadastrado com sucesso!');
+                    mostrarNotificacao('Produto cadastrado com sucesso!', 'success');
+                    
+                    // Atualizar Dashboard se estiver visível
+                    if (document.getElementById('dashboardPage')?.style.display === 'block') {
+                        if (typeof carregarDashboard === 'function') {
+                            await carregarDashboard();
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Erro ao cadastrar produto:', error);
+                    alert('❌ Erro ao cadastrar produto! Verifique o console.');
+                    mostrarNotificacao('Erro ao cadastrar produto!', 'error');
+                }
+            });
         }
-    });
-}
+        
+        tentativas++;
+        if (tentativas > 20) {
+            clearInterval(interval);
+            console.log('❌ Botão salvarProdutoBtn não encontrado após 20 tentativas');
+        }
+    }, 500);
+});
 
 // Editar produto - VERSÃO CORRIGIDA COM VERIFICAÇÃO DO MODAL
 window.editarProduto = async function(produtoId) {
@@ -930,19 +977,15 @@ window.editarProduto = async function(produtoId) {
             </div>
             <div class="form-group">
                 <label>Preço de Custo (R$)</label>
-                <input type="number" id="edit_precoCusto" step="0.001" value="${produto.precoCusto || 0}">
-            </div>
-            <div class="form-group">
-                <label>Preço de Venda (R$)</label>
-                <input type="number" id="edit_precoVenda" step="0.001" value="${produto.precoVenda || 0}">
+                <input type="text" id="edit_precoCusto" class="input-valor" value="${formatarValorBrasileiro(produto.precoCusto || 0)}" style="text-align: right;">
             </div>
             <div class="form-group">
                 <label>Estoque Atual</label>
-                <input type="number" id="edit_estoqueAtual" step="0.001" value="${produto.estoqueAtual || 0}">
+                <input type="text" id="edit_estoqueAtual" class="input-quantidade" value="${formatarQuantidadeBrasileira(produto.estoqueAtual || 0)}" style="text-align: right;">
             </div>
             <div class="form-group">
                 <label>Estoque Mínimo</label>
-                <input type="number" id="edit_estoqueMinimo" step="0.001" value="${produto.estoqueMinimo || 0}">
+                <input type="text" id="edit_estoqueMinimo" class="input-quantidade" value="${formatarQuantidadeBrasileira(produto.estoqueMinimo || 0)}" style="text-align: right;">
             </div>
             <div class="modal-buttons">
                 <button type="submit" class="btn-save">💾 Salvar</button>
@@ -978,8 +1021,8 @@ window.editarProduto = async function(produtoId) {
     novoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const precoCusto = parseFloat(document.getElementById('edit_precoCusto').value) || 0;
-        const precoVenda = parseFloat(document.getElementById('edit_precoVenda').value) || 0;
+        const precoCusto = converterParaNumero(document.getElementById('produtoPrecoCusto').value);
+        const precoVenda = converterParaNumero(document.getElementById('edit_precoVenda').value);
         const margemLucro = calcularMargemLucro(precoCusto, precoVenda);
         
         const dados = {
@@ -1092,7 +1135,7 @@ window.ajustarEstoque = async function(produtoId) {
     const novaQuantidade = prompt(`Produto: ${produto.nome}\nEstoque atual: ${produto.estoqueAtual?.toFixed(3) || 0} ${produto.unidade || 'UN'}\n\nDigite a nova quantidade:`);
     
     if (novaQuantidade !== null) {
-        const quantidade = parseFloat(novaQuantidade);
+        const quantidade = converterParaNumero(novaQuantidade);
         if (!isNaN(quantidade)) {
             const diferenca = quantidade - (produto.estoqueAtual || 0);
             

@@ -904,9 +904,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
 });
 
-// Editar produto - VERSÃO CORRIGIDA COM VERIFICAÇÃO DO MODAL
+// Editar produto - VERSÃO CORRIGIDA
 window.editarProduto = async function(produtoId) {
-    console.log('Editando produto:', produtoId);
+    console.log('✏️ Editando produto:', produtoId);
     
     const produto = produtos.find(p => p.id === produtoId);
     if (!produto) {
@@ -923,7 +923,6 @@ window.editarProduto = async function(produtoId) {
     
     if (!modal) {
         console.log('Modal não encontrado, criando...');
-        // Criar o modal dinamicamente
         const modalDiv = document.createElement('div');
         modalDiv.id = 'editarProdutoModal';
         modalDiv.className = 'modal';
@@ -947,6 +946,7 @@ window.editarProduto = async function(produtoId) {
         return;
     }
     
+    // Preencher o formulário
     formContainer.innerHTML = `
         <form id="formEditarProduto" class="modal-form">
             <div class="form-group">
@@ -977,7 +977,6 @@ window.editarProduto = async function(produtoId) {
                     <option value="ML" ${produto.unidade === 'ML' ? 'selected' : ''}>ML</option>
                     <option value="PC" ${produto.unidade === 'PC' ? 'selected' : ''}>PC</option>
                     <option value="CX" ${produto.unidade === 'CX' ? 'selected' : ''}>CX</option>
-                    <option value="FD" ${produto.unidade === 'FD' ? 'selected' : ''}>FD</option>
                 </select>
             </div>
             <div class="form-group">
@@ -993,7 +992,7 @@ window.editarProduto = async function(produtoId) {
                 <input type="text" id="edit_estoqueMinimo" class="input-quantidade" value="${formatarQuantidadeBrasileira(produto.estoqueMinimo || 0)}" style="text-align: right;">
             </div>
             <div class="modal-buttons">
-                <button type="submit" class="btn-save">💾 Salvar</button>
+                <button type="submit" class="btn-save" id="btnSalvarEdicao">💾 Salvar</button>
                 <button type="button" class="btn-cancel" onclick="fecharModal('editarProdutoModal')">Cancelar</button>
             </div>
         </form>
@@ -1001,58 +1000,53 @@ window.editarProduto = async function(produtoId) {
     
     modal.style.display = 'flex';
     
-    // Adicionar evento para calcular margem em tempo real
-    const precoCustoInput = document.getElementById('edit_precoCusto');
-    const precoVendaInput = document.getElementById('edit_precoVenda');
-    
-    if (precoCustoInput && precoVendaInput) {
-        const mostrarMargemEdit = () => {
-            const custo = parseFloat(precoCustoInput.value) || 0;
-            const venda = parseFloat(precoVendaInput.value) || 0;
-            if (custo > 0 && venda > 0) {
-                const margem = ((venda - custo) / custo) * 100;
-                console.log(`Margem calculada: ${margem.toFixed(1)}%`);
+    // Configurar o botão salvar
+    const btnSalvar = document.getElementById('btnSalvarEdicao');
+    if (btnSalvar) {
+        // Remover event listeners antigos
+        const novoBtn = btnSalvar.cloneNode(true);
+        btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
+        
+        novoBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            console.log('👉 Botão SALVAR clicado!');
+            
+            // Coletar dados
+            const precoCusto = converterParaNumero(document.getElementById('edit_precoCusto').value);
+            const estoqueAtual = converterParaNumero(document.getElementById('edit_estoqueAtual').value);
+            const estoqueMinimo = converterParaNumero(document.getElementById('edit_estoqueMinimo').value);
+            
+            const dados = {
+                codigo: document.getElementById('edit_codigo').value.toUpperCase(),
+                nome: document.getElementById('edit_nome').value.toUpperCase(),
+                categoria: document.getElementById('edit_categoria').value,
+                unidade: document.getElementById('edit_unidade').value,
+                precoCusto: precoCusto,
+                estoqueAtual: estoqueAtual,
+                estoqueMinimo: estoqueMinimo,
+                updatedAt: new Date().toISOString()
+            };
+            
+            console.log('Dados para salvar:', dados);
+            
+            try {
+                await atualizarProdutoFirebase(produto.id, dados);
+                await carregarProdutos();
+                fecharModal('editarProdutoModal');
+                mostrarNotificacao('Produto atualizado com sucesso!', 'success');
+                
+                // Atualizar Dashboard se estiver visível
+                if (document.getElementById('dashboardPage')?.style.display === 'block') {
+                    if (typeof carregarDashboard === 'function') {
+                        await carregarDashboard();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar:', error);
+                mostrarNotificacao('Erro ao atualizar produto!', 'error');
             }
-        };
-        precoCustoInput.addEventListener('input', mostrarMargemEdit);
-        precoVendaInput.addEventListener('input', mostrarMargemEdit);
+        });
     }
-    
-    // Remover event listener anterior se existir
-    const form = document.getElementById('formEditarProduto');
-    const novoForm = form.cloneNode(true);
-    form.parentNode.replaceChild(novoForm, form);
-    
-    novoForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const precoCusto = converterParaNumero(document.getElementById('produtoPrecoCusto').value);
-        const precoVenda = converterParaNumero(document.getElementById('edit_precoVenda').value);
-        const margemLucro = calcularMargemLucro(precoCusto, precoVenda);
-        
-        const dados = {
-            codigo: document.getElementById('edit_codigo').value,
-            nome: document.getElementById('edit_nome').value,
-            categoria: document.getElementById('edit_categoria').value,
-            unidade: document.getElementById('edit_unidade').value,
-            precoCusto: precoCusto,
-            precoVenda: precoVenda,
-            margemLucro: margemLucro,
-            estoqueAtual: parseFloat(document.getElementById('edit_estoqueAtual').value) || 0,
-            estoqueMinimo: parseFloat(document.getElementById('edit_estoqueMinimo').value) || 0,
-            updatedAt: new Date().toISOString()
-        };
-        
-        try {
-            await atualizarProdutoFirebase(produto.id, dados);
-            await carregarProdutos();
-            fecharModal('editarProdutoModal');
-            mostrarNotificacao('Produto atualizado com sucesso!', 'success');
-        } catch (error) {
-            console.error('Erro ao atualizar:', error);
-            mostrarNotificacao('Erro ao atualizar produto!', 'error');
-        }
-    });
 };
 
 // Excluir produto

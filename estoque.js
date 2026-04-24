@@ -689,14 +689,13 @@ window.excluirInventario = async function(inventarioId) {
     }
 };
 
-// ========== RENDERIZAÇÃO DA TABELA DE PRODUTOS (SEM VENDA E MARGEM) ==========
-
+// Renderizar produtos na tabela - SEM MARGEM
 function renderizarProdutos() {
     const tbody = document.getElementById('produtosTableBody');
     if (!tbody) return;
     
-    if (produtos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td>' + '</tr>';
+    if (typeof produtos === 'undefined' || produtos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td></tr>';
         return;
     }
     
@@ -720,25 +719,21 @@ function renderizarProdutos() {
             }
         }
         
-        // Formatar a célula de estoque com a classe correta
-        const estoqueCelula = `<td class="${estoqueClass}">
-            <strong>${estoqueAtual.toFixed(3)} ${produto.unidade || 'UN'}</strong>
-            ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
-            ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${estoqueMinimo.toFixed(3)}</small>` : ''}
-        </td>`;
-        
         return `
             <tr>
                 <td>${produto.codigo || '-'}</td>
                 <td><strong>${produto.nome}</strong><br><small>${produto.categoria || '-'}</small></td>
-                ${estoqueCelula}
+                <td class="${estoqueClass}">
+                    <strong>${estoqueAtual.toFixed(3)} ${produto.unidade || 'UN'}</strong>
+                    ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
+                    ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${estoqueMinimo.toFixed(3)}</small>` : ''}
+                </td>
                 <td>R$ ${(produto.precoCusto || 0).toFixed(3)}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn-edit" onclick="editarProduto('${produto.id}')" title="Editar produto">✏️ Editar</button>
-                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')" title="Excluir produto">🗑️ Excluir</button>
-                        <button class="btn-preco" onclick="atualizarPrecoVenda('${produto.id}')" title="Atualizar preço de venda">💰 Preço</button>
-                        <button class="btn-estoque-acao" onclick="ajustarEstoque('${produto.id}')" title="Ajustar estoque">📦 Estoque</button>
+                        <button class="btn-edit" onclick="editarProduto('${produto.id}')">✏️ Editar</button>
+                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')">🗑️ Excluir</button>
+                        <button class="btn-primary" style="background: #8b5cf6;" onclick="ajustarEstoque('${produto.id}')">📦 Estoque</button>
                     </div>
                 </td>
             </tr>
@@ -788,44 +783,70 @@ function atualizarSelectsProdutos() {
 
 // ========== CRUD DE PRODUTOS ==========
 
-// Cadastrar produto - VERSÃO CORRIGIDA
+// Cadastrar produto - VERSÃO CORRIGIDA (SEM PREÇO DE VENDA E MARGEM)
 const salvarProdutoBtn = document.getElementById('salvarProdutoBtn');
 if (salvarProdutoBtn) {
-    salvarProdutoBtn.addEventListener('click', async (e) => {
+    // Remover event listeners antigos para evitar duplicação
+    const novoBotao = salvarProdutoBtn.cloneNode(true);
+    salvarProdutoBtn.parentNode.replaceChild(novoBotao, salvarProdutoBtn);
+    
+    novoBotao.addEventListener('click', async (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Impede propagação
+        e.stopPropagation();
         
         if (!verificarPermissao()) return;
         
+        // Pegar valores dos campos
+        const codigo = document.getElementById('produtoCodigo').value;
+        const nome = document.getElementById('produtoNome').value;
+        const categoria = document.getElementById('produtoCategoria').value;
+        const unidade = document.getElementById('produtoUnidade').value;
         const precoCusto = parseFloat(document.getElementById('produtoPrecoCusto').value) || 0;
-        const precoVenda = parseFloat(document.getElementById('produtoPrecoVenda').value) || 0;
+        const estoqueMinimo = parseFloat(document.getElementById('produtoEstoqueMinimo').value) || 0;
         
+        // Validações
+        if (!codigo) {
+            alert('Preencha o código do produto!');
+            return;
+        }
+        
+        if (!nome) {
+            alert('Preencha o nome do produto!');
+            return;
+        }
+        
+        // Criar objeto do produto (SEM preçoVenda e SEM margemLucro)
         const produto = {
-            codigo: document.getElementById('produtoCodigo').value,
-            nome: document.getElementById('produtoNome').value,
-            categoria: document.getElementById('produtoCategoria').value,
-            unidade: document.getElementById('produtoUnidade').value,
+            codigo: codigo.toUpperCase(),
+            nome: nome.toUpperCase(),
+            categoria: categoria,
+            unidade: unidade,
             precoCusto: precoCusto,
-            precoVenda: precoVenda,
-            margemLucro: calcularMargemLucro(precoCusto, precoVenda),
             estoqueAtual: 0,
-            estoqueMinimo: parseFloat(document.getElementById('produtoEstoqueMinimo').value) || 0,
+            estoqueMinimo: estoqueMinimo,
             createdAt: new Date().toISOString()
         };
         
-        if (!produto.codigo || !produto.nome) {
-            alert('Preencha código e nome do produto!');
-            return;
-        }
+        console.log('Produto a ser salvo:', produto);
         
         try {
             await salvarProdutoFirebase(produto);
             await carregarProdutos();
+            
+            // Limpar formulário
             document.getElementById('produtoForm').reset();
-            atualizarMargemInfo();
+            
             mostrarNotificacao('Produto cadastrado com sucesso!', 'success');
+            
+            // Se o Dashboard estiver visível, atualizar
+            if (document.getElementById('dashboardPage') && document.getElementById('dashboardPage').style.display === 'block') {
+                if (typeof carregarDashboard === 'function') {
+                    await carregarDashboard();
+                }
+            }
+            
         } catch (error) {
-            console.error('Erro:', error);
+            console.error('Erro ao cadastrar produto:', error);
             mostrarNotificacao('Erro ao cadastrar produto!', 'error');
         }
     });

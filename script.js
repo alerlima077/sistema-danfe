@@ -2235,7 +2235,7 @@ async function carregarDashboard() {
     document.getElementById('produtosNormal').innerText = produtosNormal;
     document.getElementById('produtosAlerta').innerText = produtosAlerta;
     document.getElementById('produtosCritico').innerText = produtosCritico;
-    document.getElementById('valorTotalEstoque').innerHTML = `R$ ${valorTotalEstoque.toFixed(3)}`;
+    document.getElementById('valorTotalEstoque').innerHTML = `R$ ${formatarValorBrasileiro(valorTotalEstoque)}`;
     
     // Giro de Estoque
     await atualizarGiroEstoque();

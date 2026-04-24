@@ -3,6 +3,98 @@ let produtos = [];
 let movimentacoes = [];
 let inventarios = [];
 
+// ========== FUNÇÕES PARA EVITAR DUPLICIDADE ==========
+
+// Normalizar texto para comparação (remove acentos, espaços extras, converte para maiúsculo)
+function normalizarTexto(texto) {
+    if (!texto) return '';
+    
+    // Converter para maiúsculo
+    let normalizado = texto.toUpperCase().trim();
+    
+    // Remover acentos
+    normalizado = normalizado.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    
+    // Remover pontuações e caracteres especiais (exceto números e letras)
+    normalizado = normalizado.replace(/[^\w\s]/g, '');
+    
+    // Remover espaços extras
+    normalizado = normalizado.replace(/\s+/g, ' ');
+    
+    // Remover palavras comuns que podem causar duplicidade
+    const palavrasRemover = ['KG', 'UN', 'CX', 'PCT', 'G', 'L', 'ML', 'PC', 'FD'];
+    palavrasRemover.forEach(palavra => {
+        normalizado = normalizado.replace(new RegExp(`\\b${palavra}\\b`, 'g'), '');
+    });
+    
+    // Remover números no final (ex: "CALABRESA 12KG" -> "CALABRESA")
+    normalizado = normalizado.replace(/\s+\d+$/, '');
+    normalizado = normalizado.replace(/\d+$/, '');
+    
+    return normalizado.trim();
+}
+
+// Buscar produtos similares
+async function buscarProdutosSimilares(nomeProduto, codigoProduto = null) {
+    if (typeof produtos === 'undefined' || produtos.length === 0) return [];
+    
+    const nomeNormalizado = normalizarTexto(nomeProduto);
+    const similares = [];
+    
+    produtos.forEach(produto => {
+        const produtoNormalizado = normalizarTexto(produto.nome);
+        
+        // Verificar se o código já existe
+        if (codigoProduto && produto.codigo === codigoProduto) {
+            similares.push({ produto, tipo: 'codigo', confianca: 100 });
+        }
+        // Verificar nome idêntico
+        else if (produtoNormalizado === nomeNormalizado) {
+            similares.push({ produto, tipo: 'nome', confianca: 95 });
+        }
+        // Verificar se o nome está contido
+        else if (produtoNormalizado.includes(nomeNormalizado) || nomeNormalizado.includes(produtoNormalizado)) {
+            similares.push({ produto, tipo: 'parcial', confianca: 70 });
+        }
+        // Verificar palavras-chave
+        else {
+            const palavrasNome = nomeNormalizado.split(' ');
+            const palavrasProduto = produtoNormalizado.split(' ');
+            const palavrasComuns = palavrasNome.filter(p => palavrasProduto.includes(p));
+            
+            if (palavrasComuns.length >= 1 && palavrasComuns.length <= 2) {
+                similares.push({ produto, tipo: 'palavra', confianca: 50 });
+            }
+        }
+    });
+    
+    similares.sort((a, b) => b.confianca - a.confianca);
+    return similares;
+}
+
+// Verificar duplicidade antes de cadastrar
+async function verificarDuplicidadeProduto(nome, codigo) {
+    const similares = await buscarProdutosSimilares(nome, codigo);
+    const fortesSuspeitas = similares.filter(s => s.confianca >= 70);
+    
+    if (fortesSuspeitas.length > 0) {
+        const produtoExistente = fortesSuspeitas[0].produto;
+        
+        return {
+            duplicado: true,
+            produtoExistente: produtoExistente,
+            similares: fortesSuspeitas,
+            mensagem: `⚠️ ATENÇÃO! Já existe um produto similar cadastrado:\n\n` +
+                      `📦 Produto: ${produtoExistente.nome}\n` +
+                      `📝 Código: ${produtoExistente.codigo}\n` +
+                      `📊 Estoque: ${produtoExistente.estoqueAtual || 0} ${produtoExistente.unidade}\n\n` +
+                      `Deseja continuar com o cadastro mesmo assim?`
+        };
+    }
+    
+    return { duplicado: false };
+}
+
 // ========== FUNÇÕES DAS ABAS ==========
 
 function mostrarAba(aba) {
@@ -791,11 +883,37 @@ function atualizarSelectsProdutos() {
 
 // ========== CRUD DE PRODUTOS ==========
 
-// ========== CADASTRO DE PRODUTO - VERSÃO CORRIGIDA ==========
+// ========== CADASTRO DE PRODUTO - COM VERIFICAÇÃO DE DUPLICIDADE ==========
 
 // Aguardar o DOM carregar completamente
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Inicializando cadastro de produto...');
+    
+    // ⭐ CONFIGURAR AUTOCOMPLETE/SUGESTÃO AO DIGITAR ⭐
+    const inputNome = document.getElementById('produtoNome');
+    let timeoutId;
+    
+    if (inputNome) {
+        inputNome.addEventListener('input', async function() {
+            clearTimeout(timeoutId);
+            const termo = this.value.trim();
+            
+            if (termo.length < 3) return;
+            
+            timeoutId = setTimeout(async () => {
+                // Aguardar produtos carregados
+                if (typeof produtos === 'undefined' || produtos.length === 0) {
+                    await carregarProdutos();
+                }
+                
+                const similares = await buscarProdutosSimilares(termo);
+                if (similares.length > 0) {
+                    const sugestoes = similares.slice(0, 3).map(s => s.produto.nome).join(', ');
+                    mostrarNotificacao(`💡 Produto similar encontrado: ${sugestoes}`, 'info');
+                }
+            }, 800);
+        });
+    }
     
     // Tentar encontrar o botão várias vezes
     let tentativas = 0;
@@ -833,9 +951,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('❌ Preencha o nome do produto!');
                     return;
                 }
-                if (precoCusto === 0) {
-                    alert('⚠️ Preço de custo está zerado. Deseja continuar?');
-                    // Não retorna, apenas avisa
+                
+                // ⭐ VERIFICAR DUPLICIDADE ANTES DE CADASTRAR ⭐
+                if (typeof produtos !== 'undefined' && produtos.length > 0) {
+                    const duplicidade = await verificarDuplicidadeProduto(nome, codigo);
+                    
+                    if (duplicidade.duplicado) {
+                        const confirmar = confirm(duplicidade.mensagem);
+                        if (!confirmar) {
+                            mostrarNotificacao('Cadastro cancelado para evitar duplicidade.', 'warning');
+                            return;
+                        }
+                        mostrarNotificacao('Cadastro continuado mesmo com produto similar.', 'info');
+                    }
                 }
                 
                 const produto = {
@@ -846,6 +974,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     precoCusto: precoCusto,
                     estoqueAtual: 0,
                     estoqueMinimo: estoqueMinimo,
+                    nomeNormalizado: normalizarTexto(nome),
                     createdAt: new Date().toISOString()
                 };
                 
@@ -858,7 +987,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('✅ Produto salvo com ID:', docRef.id);
                     } else {
                         console.log('Firebase não disponível');
-                        produtos.push(produto);
+                        if (typeof produtos !== 'undefined') {
+                            produtos.push(produto);
+                        }
                     }
                     
                     // Recarregar lista

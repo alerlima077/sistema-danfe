@@ -845,9 +845,9 @@ function renderizarProdutosComFiltro() {
             }
         }
         
-        const estoqueFormatado = formatarQuantidadeBrasileira(estoqueAtual);
+        const estoqueFormatado = estoqueAtual.toFixed(2);
         const custoFormatado = formatarValorBrasileiro(produto.precoCusto || 0);
-        const minimoFormatado = formatarQuantidadeBrasileira(estoqueMinimo);
+        const minimoFormatado = estoqueMinimo.toFixed(2);
         
         return `
             <tr>
@@ -1029,9 +1029,9 @@ function renderizarProdutos() {
         }
         
         // Usar as funções de formatação brasileira
-        const estoqueFormatado = formatarQuantidadeBrasileira(estoqueAtual);
+        const estoqueFormatado = estoqueAtual.toFixed(2);
         const custoFormatado = formatarValorBrasileiro(produto.precoCusto || 0);
-        const minimoFormatado = formatarQuantidadeBrasileira(estoqueMinimo);
+        const minimoFormatado = estoqueMinimo.toFixed(2);
         
         // ⭐ DESTACAR O TERMO BUSCADO NO NOME (opcional) ⭐
         let nomeExibido = produto.nome;
@@ -1337,11 +1337,11 @@ window.editarProduto = async function(produtoId) {
             </div>
             <div class="form-group">
                 <label>Estoque Atual</label>
-                <input type="text" id="edit_estoqueAtual" class="input-quantidade" value="${formatarQuantidadeBrasileira(produto.estoqueAtual || 0)}" style="text-align: right;">
+                <input type="text" id="edit_estoqueAtual" class="input-quantidade" value="${(produto.estoqueAtual || 0).toFixed(2)}" style="text-align: right;">
             </div>
             <div class="form-group">
                 <label>Estoque Mínimo</label>
-                <input type="text" id="edit_estoqueMinimo" class="input-quantidade" value="${formatarQuantidadeBrasileira(produto.estoqueMinimo || 0)}" style="text-align: right;">
+                <input type="text" id="edit_estoqueMinimo" class="input-quantidade" value="${(produto.estoqueMinimo || 0).toFixed(2)}" style="text-align: right;">
             </div>
             <div class="modal-buttons">
                 <button type="submit" class="btn-save" id="btnSalvarEdicao">💾 Salvar</button>

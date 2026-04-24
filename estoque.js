@@ -132,26 +132,29 @@ window.mostrarAba = mostrarAba;
 
 // ========== FUNÇÕES DO FIREBASE PARA PRODUTOS ==========
 
-// Carregar produtos do Firebase
 async function carregarProdutos() {
-    if (typeof db === 'undefined') {
-        console.log('Firebase não disponível');
-        return;
-    }
+    console.log('🔄 Carregando produtos...');
+    if (typeof db === 'undefined') return;
     
     try {
-        console.log('Carregando produtos do Firebase...');
         const snapshot = await db.collection('produtos').orderBy('nome', 'asc').get();
         produtos = [];
         snapshot.forEach(doc => {
             produtos.push({ id: doc.id, ...doc.data() });
         });
-        console.log(`${produtos.length} produtos carregados`);
-        renderizarProdutos();
+        console.log(`✅ ${produtos.length} produtos carregados`);
+        
+        // ⭐ RENDERIZAR APÓS CARREGAR ⭐
+        if (typeof renderizarProdutosComFiltro === 'function') {
+            renderizarProdutosComFiltro();
+        } else if (typeof renderizarProdutos === 'function') {
+            renderizarProdutos();
+        }
+        
         atualizarSelectsProdutos();
+        
     } catch (error) {
         console.error('Erro ao carregar produtos:', error);
-        mostrarNotificacao('Erro ao carregar produtos!', 'error');
     }
 }
 
@@ -1621,6 +1624,7 @@ function inicializarEstoque() {
     configurarConsumoListeners();
     configurarRelatorioListeners();  // ⭐ NOVO // ⭐ NOVO: Configurar listeners do inventário
     configurarBuscaProdutos();
+    configurarBuscaProdutosPermanente();
 }
 
 // Expor funções globalmente
@@ -3130,7 +3134,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ========== FUNÇÃO DE BUSCA DE PRODUTOS ==========
+// ========== FUNÇÃO DE BUSCA DE PRODUTOS - VERSÃO CORRIGIDA ==========
 function configurarBuscaProdutos() {
     console.log('🔧 Configurando busca de produtos...');
     
@@ -3142,28 +3146,112 @@ function configurarBuscaProdutos() {
         return;
     }
     
-    // Função que executa a busca
-    function executarBusca() {
+    // Função que executa a busca - GARANTINDO QUE OS PRODUTOS ESTEJAM CARREGADOS
+    async function executarBusca() {
         const termo = buscaInput.value;
         console.log('🔍 Buscando por:', termo);
+        
+        // ⭐ GARANTIR QUE OS PRODUTOS ESTEJAM CARREGADOS ⭐
+        if (!produtos || produtos.length === 0) {
+            console.log('⚠️ Produtos não carregados, carregando...');
+            if (typeof carregarProdutos === 'function') {
+                await carregarProdutos();
+            }
+        }
         
         // Mostrar/esconder botão limpar
         if (limparBtn) {
             limparBtn.style.display = termo.length > 0 ? 'block' : 'none';
         }
         
-        // Atualizar a tabela de produtos
-        if (typeof renderizarProdutos === 'function') {
-            renderizarProdutos();
-        } else if (typeof renderizarProdutosComFiltro === 'function') {
-            renderizarProdutosComFiltro();
-        } else {
-            console.log('⚠️ Nenhuma função de renderização encontrada');
-        }
+        // Renderizar com filtro
+        renderizarProdutosComFiltro();
     }
     
+    // ⭐ FUNÇÃO DE RENDERIZAÇÃO COM FILTRO ⭐
+    window.renderizarProdutosComFiltro = function() {
+        const tbody = document.getElementById('produtosTableBody');
+        if (!tbody) return;
+        
+        if (!produtos || produtos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td></tr>';
+            return;
+        }
+        
+        const termoBusca = buscaInput.value.trim().toLowerCase();
+        
+        let produtosFiltrados = produtos;
+        if (termoBusca !== '') {
+            produtosFiltrados = produtos.filter(produto => {
+                return (produto.codigo && produto.codigo.toLowerCase().includes(termoBusca)) ||
+                       (produto.nome && produto.nome.toLowerCase().includes(termoBusca));
+            });
+            console.log(`🔍 Filtrado: ${produtosFiltrados.length} de ${produtos.length} produtos`);
+        }
+        
+        if (produtosFiltrados.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-message">🔍 Nenhum produto encontrado com "${termoBusca}"</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = produtosFiltrados.map(produto => {
+            let estoqueClass = '';
+            let alertaTexto = '';
+            const estoqueAtual = produto.estoqueAtual || 0;
+            const estoqueMinimo = produto.estoqueMinimo || 0;
+            
+            if (estoqueMinimo > 0) {
+                if (estoqueAtual <= 0) {
+                    estoqueClass = 'estoque-zero';
+                    alertaTexto = 'ZERADO!';
+                } else if (estoqueAtual <= estoqueMinimo) {
+                    estoqueClass = 'estoque-critico';
+                    alertaTexto = 'CRÍTICO!';
+                } else if (estoqueAtual <= estoqueMinimo * 1.2) {
+                    estoqueClass = 'estoque-alerta';
+                    alertaTexto = 'ALERTA!';
+                }
+            }
+            
+            const estoqueFormatado = (estoqueAtual).toFixed(3);
+            const custoFormatado = (produto.precoCusto || 0).toFixed(2);
+            
+            // Destacar termo
+            let nomeExibido = produto.nome;
+            if (termoBusca) {
+                const regex = new RegExp(`(${termoBusca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                nomeExibido = produto.nome.replace(regex, '<span class="highlight">$1</span>');
+            }
+            
+            return `
+                <tr>
+                    <td>${produto.codigo || '-'}</td>
+                    <td><strong>${nomeExibido}</strong><br><small>${produto.categoria || '-'}</small></td>
+                    <td class="${estoqueClass}">
+                        <strong>${estoqueFormatado} ${produto.unidade || 'UN'}</strong>
+                        ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
+                        ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${estoqueMinimo.toFixed(3)} ${produto.unidade || 'UN'}</small>` : ''}
+                    </td>
+                    <td>R$ ${custoFormatado}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-edit" onclick="editarProduto('${produto.id}')">✏️ Editar</button>
+                            <button class="btn-delete" onclick="excluirProduto('${produto.id}')">🗑️ Excluir</button>
+                            <button class="btn-primary" style="background: #8b5cf6;" onclick="ajustarEstoque('${produto.id}')">📦 Estoque</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    };
+    
     // Evento ao digitar
-    buscaInput.addEventListener('input', executarBusca);
+    buscaInput.addEventListener('input', function() {
+        const termo = this.value;
+        if (termo.length >= 1 || termo.length === 0) {
+            executarBusca();
+        }
+    });
     
     // Evento ao pressionar Enter
     buscaInput.addEventListener('keypress', function(e) {
@@ -3183,4 +3271,77 @@ function configurarBuscaProdutos() {
     }
     
     console.log('✅ Busca de produtos configurada');
+}
+
+// ========== CONFIGURAÇÃO PERMANENTE DA BUSCA ==========
+function configurarBuscaProdutosPermanente() {
+    console.log('🔧 Configurando busca permanente...');
+    
+    const inputBusca = document.getElementById('buscaProduto');
+    if (!inputBusca) {
+        console.log('❌ Campo buscaProduto não encontrado');
+        return;
+    }
+    
+    // Função de busca
+    function buscarAgora() {
+        const termo = inputBusca.value.trim().toLowerCase();
+        console.log('🔍 Buscando por:', termo || '(todos)');
+        
+        let filtrados = produtos;
+        if (termo) {
+            filtrados = produtos.filter(p => 
+                (p.codigo && p.codigo.toLowerCase().includes(termo)) ||
+                (p.nome && p.nome.toLowerCase().includes(termo))
+            );
+        }
+        
+        const tbody = document.getElementById('produtosTableBody');
+        if (!tbody) return;
+        
+        if (filtrados.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-message">🔍 Nenhum produto encontrado${termo ? ' para "' + termo + '"' : ''}</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = filtrados.map(p => `
+            <tr>
+                <td>${p.codigo || '-'}</td>
+                <td><strong>${p.nome || '-'}</strong><br><small>${p.categoria || '-'}</small></td>
+                <td>${(p.estoqueAtual || 0).toFixed(3)} ${p.unidade || 'UN'}</td>
+                <td>R$ ${(p.precoCusto || 0).toFixed(2)}</span></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-edit" onclick="editarProduto('${p.id}')">✏️ Editar</button>
+                        <button class="btn-delete" onclick="excluirProduto('${p.id}')">🗑️ Excluir</button>
+                        <button class="btn-primary" onclick="ajustarEstoque('${p.id}')">📦 Estoque</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+    
+    // Configurar eventos
+    inputBusca.addEventListener('input', buscarAgora);
+    inputBusca.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') buscarAgora();
+    });
+    
+    // Configurar botão limpar se existir
+    const limparBtn = document.getElementById('limparBuscaBtn');
+    if (limparBtn) {
+        limparBtn.addEventListener('click', function() {
+            inputBusca.value = '';
+            buscarAgora();
+        });
+    }
+    
+    console.log('✅ Busca permanente configurada!');
+}
+
+// Chamar a função quando a página carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', configurarBuscaProdutosPermanente);
+} else {
+    configurarBuscaProdutosPermanente();
 }

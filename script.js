@@ -2358,7 +2358,6 @@ async function atualizarGiroEstoque() {
     document.getElementById('giroEstoque').innerText = totalMovimentado.toFixed(0);
 }
 
-// Atualizar alertas de estoque
 function atualizarAlertasEstoque() {
     const container = document.getElementById('alertasEstoque');
     
@@ -2378,13 +2377,11 @@ function atualizarAlertasEstoque() {
         return;
     }
     
-    // Ordenar por mais crítico
     alertas.sort((a, b) => (a.estoqueAtual || 0) - (b.estoqueAtual || 0));
     
     container.innerHTML = alertas.map(p => {
         const atual = p.estoqueAtual || 0;
         const min = p.estoqueMinimo || 0;
-        const percentual = min > 0 ? (atual / min) * 100 : 100;
         
         let status = '';
         let statusClass = '';
@@ -2399,11 +2396,12 @@ function atualizarAlertasEstoque() {
             statusClass = 'alerta-alerta';
         }
         
+        // ⭐ ALTERADO: 2 casas decimais ⭐
         return `
             <div class="alerta-item">
                 <div>
                     <div class="alerta-produto">${p.nome}</div>
-                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(3)} ${p.unidade || 'UN'} | Mínimo: ${min.toFixed(3)}</div>
+                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(2)} ${p.unidade || 'UN'} / Mín: ${min.toFixed(2)}</div>
                 </div>
                 <span class="alerta-status ${statusClass}">${status}</span>
             </div>
@@ -2411,7 +2409,6 @@ function atualizarAlertasEstoque() {
     }).join('');
 }
 
-// Atualizar Top 5 Consumo
 async function atualizarTopConsumo() {
     const container = document.getElementById('topConsumo');
     
@@ -2441,7 +2438,6 @@ async function atualizarTopConsumo() {
             return;
         }
         
-        // Agrupar por produto
         const consumo = {};
         saidas.forEach(s => {
             const id = s.produtoId;
@@ -2455,7 +2451,6 @@ async function atualizarTopConsumo() {
             consumo[id].quantidade += s.quantidade || 0;
         });
         
-        // Adicionar unidade
         for (let id in consumo) {
             const produto = produtos.find(p => p.id === id);
             if (produto && produto.unidade) {
@@ -2463,20 +2458,20 @@ async function atualizarTopConsumo() {
             }
         }
         
-        // Converter e ordenar
         let lista = Object.values(consumo);
         lista.sort((a, b) => b.quantidade - a.quantidade);
         lista = lista.slice(0, 5);
         
         const maxQtd = lista[0]?.quantidade || 1;
         
+        // ⭐ ALTERADO: 2 casas decimais ⭐
         container.innerHTML = lista.map(item => {
             const percent = (item.quantidade / maxQtd) * 100;
             return `
                 <div class="consumo-item">
                     <div class="consumo-header">
                         <span class="consumo-nome">${item.nome}</span>
-                        <span class="consumo-valor">${item.quantidade.toFixed(3)} ${item.unidade}</span>
+                        <span class="consumo-valor">${item.quantidade.toFixed(2)} ${item.unidade}</span>
                     </div>
                     <div class="consumo-bar">
                         <div class="consumo-bar-fill" style="width: ${percent}%"></div>
@@ -2585,7 +2580,6 @@ async function atualizarGraficoConsumo() {
     }
 }
 
-// Resumo por categoria
 function atualizarResumoCategorias() {
     const container = document.getElementById('resumoCategorias');
     
@@ -2610,11 +2604,12 @@ function atualizarResumoCategorias() {
         categorias[nomeCategoria].produtos++;
     });
     
+    // ⭐ ALTERADO: 2 casas decimais para quantidade ⭐
     container.innerHTML = Object.entries(categorias).map(([nome, dados]) => `
         <div class="categoria-item">
             <div class="categoria-nome">${nome}</div>
-            <div class="categoria-quantidade">${dados.quantidade.toFixed(0)} unidades</div>
-            <div class="categoria-valor">R$ ${dados.valor.toFixed(3)}</div>
+            <div class="categoria-quantidade">${dados.quantidade.toFixed(2)} unidades</div>
+            <div class="categoria-valor">R$ ${dados.valor.toFixed(2)}</div>
             <div class="categoria-valor" style="font-size: 11px;">${dados.produtos} produtos</div>
         </div>
     `).join('');
@@ -2663,7 +2658,6 @@ function atualizarGraficoBoletos(total, pagos, vencidos) {
     });
 }
 
-// Atualizar alertas de estoque
 function atualizarAlertasEstoque() {
     const container = document.getElementById('alertasEstoque');
     
@@ -2675,7 +2669,7 @@ function atualizarAlertasEstoque() {
     const alertas = produtos.filter(p => {
         const min = p.estoqueMinimo || 0;
         const atual = p.estoqueAtual || 0;
-        return min > 0 && atual <= min;
+        return min > 0 && atual <= min * 1.3;
     });
     
     if (alertas.length === 0) {
@@ -2683,20 +2677,31 @@ function atualizarAlertasEstoque() {
         return;
     }
     
-    // Ordenar por mais crítico
     alertas.sort((a, b) => (a.estoqueAtual || 0) - (b.estoqueAtual || 0));
     
     container.innerHTML = alertas.map(p => {
         const atual = p.estoqueAtual || 0;
         const min = p.estoqueMinimo || 0;
-        const status = atual <= 0 ? 'ZERADO!' : 'CRÍTICO';
-        const statusClass = atual <= 0 ? 'alerta-critico' : 'alerta-critico';
         
+        let status = '';
+        let statusClass = '';
+        if (atual <= 0) {
+            status = 'ZERADO!';
+            statusClass = 'alerta-critico';
+        } else if (atual <= min) {
+            status = 'CRÍTICO';
+            statusClass = 'alerta-critico';
+        } else {
+            status = 'ALERTA';
+            statusClass = 'alerta-alerta';
+        }
+        
+        // ⭐ ALTERADO: 2 casas decimais ⭐
         return `
             <div class="alerta-item">
                 <div>
                     <div class="alerta-produto">${p.nome}</div>
-                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(3)} ${p.unidade || 'UN'} / Mín: ${min.toFixed(3)}</div>
+                    <div class="alerta-quantidade">Estoque: ${atual.toFixed(2)} ${p.unidade || 'UN'} / Mín: ${min.toFixed(2)}</div>
                 </div>
                 <span class="alerta-status ${statusClass}">${status}</span>
             </div>
@@ -2704,7 +2709,6 @@ function atualizarAlertasEstoque() {
     }).join('');
 }
 
-// Atualizar Top 5 Consumo
 async function atualizarTopConsumo() {
     const container = document.getElementById('topConsumo');
     
@@ -2714,16 +2718,13 @@ async function atualizarTopConsumo() {
     }
     
     try {
-        // Buscar movimentações de saída dos últimos 30 dias
         const hoje = new Date();
         const trintaDiasAtras = new Date(hoje);
         trintaDiasAtras.setDate(hoje.getDate() - 30);
         
-        const snapshot = await db.collection('movimentacoes')
-            .where('tipo', '==', 'saida')
-            .get();
-        
+        const snapshot = await db.collection('movimentacoes').where('tipo', '==', 'saida').get();
         const saidas = [];
+        
         snapshot.forEach(doc => {
             const data = doc.data();
             const dataMov = new Date(data.dataHora);
@@ -2737,33 +2738,40 @@ async function atualizarTopConsumo() {
             return;
         }
         
-        // Agrupar por produto
         const consumo = {};
         saidas.forEach(s => {
             const id = s.produtoId;
             if (!consumo[id]) {
                 consumo[id] = {
                     nome: s.produtoNome || id,
-                    quantidade: 0
+                    quantidade: 0,
+                    unidade: 'UN'
                 };
             }
             consumo[id].quantidade += s.quantidade || 0;
         });
         
-        // Converter e ordenar
+        for (let id in consumo) {
+            const produto = produtos.find(p => p.id === id);
+            if (produto && produto.unidade) {
+                consumo[id].unidade = produto.unidade;
+            }
+        }
+        
         let lista = Object.values(consumo);
         lista.sort((a, b) => b.quantidade - a.quantidade);
         lista = lista.slice(0, 5);
         
         const maxQtd = lista[0]?.quantidade || 1;
         
+        // ⭐ ALTERADO: 2 casas decimais ⭐
         container.innerHTML = lista.map(item => {
             const percent = (item.quantidade / maxQtd) * 100;
             return `
                 <div class="consumo-item">
                     <div class="consumo-header">
                         <span class="consumo-nome">${item.nome}</span>
-                        <span class="consumo-valor">${item.quantidade.toFixed(3)} unidades</span>
+                        <span class="consumo-valor">${item.quantidade.toFixed(2)} ${item.unidade}</span>
                     </div>
                     <div class="consumo-bar">
                         <div class="consumo-bar-fill" style="width: ${percent}%"></div>

@@ -580,6 +580,19 @@
                                 <input type="text" id="produtoEstoqueMinimo" class="input-quantidade" placeholder="0,000" style="text-align: right;">
                             </div>
                             
+                             <!-- 🔍 CAMPO DE BUSCA DE PRODUTOS -->
+                            <div class="busca-produtos">
+                                <div class="busca-container">
+                                    <div class="busca-input-group">
+                                        <input type="text" id="buscaProduto" class="busca-input" placeholder="🔍 Buscar produto por nome ou código...">
+                                        <button id="limparBuscaBtn" class="btn-limpar-busca" style="display: none;">✖️ Limpar</button>
+                                    </div>
+                                    <div id="sugestoesBusca" class="sugestoes-busca" style="display: none;">
+                                        <!-- Sugestões aparecerão aqui -->
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-group full-width">
                                 <button type="button" id="salvarProdutoBtn" class="btn-primary">➕ Cadastrar Produto</button>
                             </div>

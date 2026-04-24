@@ -786,16 +786,227 @@ window.excluirInventario = async function(inventarioId) {
     }
 };
 
+// ========== FUNÇÕES DE BUSCA DE PRODUTOS ==========
+
+let produtosFiltrados = [];
+
+// Filtrar produtos baseado na busca
+function filtrarProdutos(termo) {
+    if (!termo || termo.trim() === '') {
+        produtosFiltrados = [...produtos];
+        return produtosFiltrados;
+    }
+    
+    const termoLower = termo.toLowerCase().trim();
+    
+    produtosFiltrados = produtos.filter(produto => {
+        return produto.codigo?.toLowerCase().includes(termoLower) ||
+               produto.nome?.toLowerCase().includes(termoLower) ||
+               produto.categoria?.toLowerCase().includes(termoLower);
+    });
+    
+    return produtosFiltrados;
+}
+
+// Renderizar lista de produtos com filtro
+function renderizarProdutosComFiltro() {
+    const tbody = document.getElementById('produtosTableBody');
+    if (!tbody) return;
+    
+    const termoBusca = document.getElementById('buscaProduto')?.value || '';
+    const produtosParaMostrar = termoBusca ? filtrarProdutos(termoBusca) : produtos;
+    
+    if (produtosParaMostrar.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-message">
+            ${termoBusca ? '🔍 Nenhum produto encontrado com "' + termoBusca + '"' : 'Nenhum produto cadastrado'}
+         </td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = produtosParaMostrar.map(produto => {
+        let estoqueClass = '';
+        let alertaTexto = '';
+        const estoqueAtual = produto.estoqueAtual || 0;
+        const estoqueMinimo = produto.estoqueMinimo || 0;
+        
+        if (estoqueMinimo > 0) {
+            if (estoqueAtual <= 0) {
+                estoqueClass = 'estoque-zero';
+                alertaTexto = 'ZERADO!';
+            } else if (estoqueAtual <= estoqueMinimo) {
+                estoqueClass = 'estoque-critico';
+                alertaTexto = 'CRÍTICO!';
+            } else if (estoqueAtual <= estoqueMinimo * 1.2) {
+                estoqueClass = 'estoque-alerta';
+                alertaTexto = 'ALERTA!';
+            }
+        }
+        
+        const estoqueFormatado = formatarQuantidadeBrasileira(estoqueAtual);
+        const custoFormatado = formatarValorBrasileiro(produto.precoCusto || 0);
+        const minimoFormatado = formatarQuantidadeBrasileira(estoqueMinimo);
+        
+        return `
+            <tr>
+                <td>${produto.codigo || '-'}</td>
+                <td><strong>${produto.nome}</strong><br><small>${produto.categoria || '-'}</small></td>
+                <td class="${estoqueClass}">
+                    <strong>${estoqueFormatado} ${produto.unidade || 'UN'}</strong>
+                    ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
+                    ${estoqueMinimo > 0 ? `<br><small style="color: #666;">Mín: ${minimoFormatado} ${produto.unidade || 'UN'}</small>` : ''}
+                 </td>
+                <td>R$ ${custoFormatado}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-edit" onclick="editarProduto('${produto.id}')">✏️ Editar</button>
+                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')">🗑️ Excluir</button>
+                        <button class="btn-primary" style="background: #8b5cf6;" onclick="ajustarEstoque('${produto.id}')">📦 Estoque</button>
+                    </div>
+                 </td>
+             </tr>
+        `;
+    }).join('');
+}
+
+// Mostrar sugestões de busca
+function mostrarSugestoesBusca() {
+    const termo = document.getElementById('buscaProduto')?.value || '';
+    const sugestoesDiv = document.getElementById('sugestoesBusca');
+    
+    if (!termo || termo.length < 2) {
+        sugestoesDiv.style.display = 'none';
+        return;
+    }
+    
+    const produtosFiltrados = filtrarProdutos(termo);
+    
+    if (produtosFiltrados.length === 0) {
+        sugestoesDiv.style.display = 'none';
+        return;
+    }
+    
+    const sugestoes = produtosFiltrados.slice(0, 5);
+    
+    sugestoesDiv.innerHTML = sugestoes.map(produto => {
+        const nomeDestacado = produto.nome.replace(new RegExp(`(${termo})`, 'gi'), '<span class="highlight">$1</span>');
+        
+        return `
+            <div class="sugestao-item" onclick="selecionarProdutoBusca('${produto.id}')">
+                <div>
+                    <span class="sugestao-nome">${nomeDestacado}</span>
+                    <span class="sugestao-codigo">(${produto.codigo})</span>
+                </div>
+                <div class="sugestao-estoque">📦 Estoque: ${(produto.estoqueAtual || 0).toFixed(3)} ${produto.unidade || 'UN'}</div>
+            </div>
+        `;
+    }).join('');
+    
+    sugestoesDiv.style.display = 'block';
+}
+
+// Selecionar produto da busca
+function selecionarProdutoBusca(produtoId) {
+    document.getElementById('buscaProduto').value = '';
+    document.getElementById('sugestoesBusca').style.display = 'none';
+    document.getElementById('limparBuscaBtn').style.display = 'none';
+    
+    const produto = produtos.find(p => p.id === produtoId);
+    if (produto) {
+        document.getElementById('buscaProduto').value = produto.nome;
+        renderizarProdutosComFiltro();
+        
+        setTimeout(() => {
+            const rows = document.querySelectorAll('#produtosTableBody tr');
+            for (let row of rows) {
+                if (row.innerText.includes(produto.nome)) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    row.style.backgroundColor = '#fef08a';
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                    }, 2000);
+                    break;
+                }
+            }
+        }, 100);
+    }
+}
+
+// Limpar busca
+function limparBusca() {
+    document.getElementById('buscaProduto').value = '';
+    document.getElementById('sugestoesBusca').style.display = 'none';
+    document.getElementById('limparBuscaBtn').style.display = 'none';
+    renderizarProdutosComFiltro();
+}
+
+// Configurar event listeners da busca
+function configurarBuscaProdutos() {
+    const buscaInput = document.getElementById('buscaProduto');
+    const limparBtn = document.getElementById('limparBuscaBtn');
+    
+    if (buscaInput) {
+        buscaInput.addEventListener('input', function() {
+            const termo = this.value;
+            if (termo.length > 0) {
+                limparBtn.style.display = 'block';
+                mostrarSugestoesBusca();
+            } else {
+                limparBtn.style.display = 'none';
+                document.getElementById('sugestoesBusca').style.display = 'none';
+            }
+            renderizarProdutosComFiltro();
+        });
+        
+        buscaInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                limparBusca();
+            }
+        });
+    }
+    
+    if (limparBtn) {
+        limparBtn.addEventListener('click', limparBusca);
+    }
+    
+    document.addEventListener('click', function(e) {
+        const sugestoes = document.getElementById('sugestoesBusca');
+        const buscaInput = document.getElementById('buscaProduto');
+        if (sugestoes && buscaInput && !buscaInput.contains(e.target) && !sugestoes.contains(e.target)) {
+            sugestoes.style.display = 'none';
+        }
+    });
+}
+
 function renderizarProdutos() {
     const tbody = document.getElementById('produtosTableBody');
     if (!tbody) return;
     
     if (typeof produtos === 'undefined' || produtos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum produto cadastrado</td></tr>';
+        tbody.innerHTML = '</td><td colspan="5" class="empty-message">Nenhum produto cadastrado</td></tr>';
         return;
     }
     
-    tbody.innerHTML = produtos.map(produto => {
+    // ⭐ PEGAR O TERMO DE BUSCA DO CAMPO ⭐
+    const buscaInput = document.getElementById('buscaProduto');
+    const termoBusca = buscaInput ? buscaInput.value.trim().toLowerCase() : '';
+    
+    // ⭐ FILTRAR PRODUTOS PELO TERMO DE BUSCA ⭐
+    let produtosFiltrados = produtos;
+    if (termoBusca !== '') {
+        produtosFiltrados = produtos.filter(produto => {
+            return (produto.codigo && produto.codigo.toLowerCase().includes(termoBusca)) ||
+                   (produto.nome && produto.nome.toLowerCase().includes(termoBusca));
+        });
+        console.log(`🔍 Busca por "${termoBusca}": ${produtosFiltrados.length} produtos encontrados`);
+    }
+    
+    // ⭐ MOSTRAR MENSAGEM SE NENHUM PRODUTO FOR ENCONTRADO ⭐
+    if (produtosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-message">🔍 Nenhum produto encontrado com "${termoBusca}"</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = produtosFiltrados.map(produto => {
         let estoqueClass = '';
         let alertaTexto = '';
         const estoqueAtual = produto.estoqueAtual || 0;
@@ -819,10 +1030,17 @@ function renderizarProdutos() {
         const custoFormatado = formatarValorBrasileiro(produto.precoCusto || 0);
         const minimoFormatado = formatarQuantidadeBrasileira(estoqueMinimo);
         
+        // ⭐ DESTACAR O TERMO BUSCADO NO NOME (opcional) ⭐
+        let nomeExibido = produto.nome;
+        if (termoBusca) {
+            const regex = new RegExp(`(${termoBusca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            nomeExibido = produto.nome.replace(regex, '<span class="highlight">$1</span>');
+        }
+        
         return `
             <tr>
                 <td>${produto.codigo || '-'}</td>
-                <td><strong>${produto.nome}</strong><br><small>${produto.categoria || '-'}</small></td>
+                <td><strong>${nomeExibido}</strong><br><small>${produto.categoria || '-'}</small></td>
                 <td class="${estoqueClass}">
                     <strong>${estoqueFormatado} ${produto.unidade || 'UN'}</strong>
                     ${alertaTexto ? `<br><small>⚠️ ${alertaTexto}</small>` : ''}
@@ -1402,6 +1620,7 @@ function inicializarEstoque() {
     configurarInventarioListeners(); 
     configurarConsumoListeners();
     configurarRelatorioListeners();  // ⭐ NOVO // ⭐ NOVO: Configurar listeners do inventário
+    configurarBuscaProdutos();
 }
 
 // Expor funções globalmente
@@ -2910,3 +3129,58 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('❌ Botão exportarRelatorioBtn não encontrado');
     }
 });
+
+// ========== FUNÇÃO DE BUSCA DE PRODUTOS ==========
+function configurarBuscaProdutos() {
+    console.log('🔧 Configurando busca de produtos...');
+    
+    const buscaInput = document.getElementById('buscaProduto');
+    const limparBtn = document.getElementById('limparBuscaBtn');
+    
+    if (!buscaInput) {
+        console.log('❌ Campo buscaProduto não encontrado');
+        return;
+    }
+    
+    // Função que executa a busca
+    function executarBusca() {
+        const termo = buscaInput.value;
+        console.log('🔍 Buscando por:', termo);
+        
+        // Mostrar/esconder botão limpar
+        if (limparBtn) {
+            limparBtn.style.display = termo.length > 0 ? 'block' : 'none';
+        }
+        
+        // Atualizar a tabela de produtos
+        if (typeof renderizarProdutos === 'function') {
+            renderizarProdutos();
+        } else if (typeof renderizarProdutosComFiltro === 'function') {
+            renderizarProdutosComFiltro();
+        } else {
+            console.log('⚠️ Nenhuma função de renderização encontrada');
+        }
+    }
+    
+    // Evento ao digitar
+    buscaInput.addEventListener('input', executarBusca);
+    
+    // Evento ao pressionar Enter
+    buscaInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            executarBusca();
+        }
+    });
+    
+    // Botão limpar
+    if (limparBtn) {
+        limparBtn.addEventListener('click', function() {
+            buscaInput.value = '';
+            this.style.display = 'none';
+            executarBusca();
+        });
+    }
+    
+    console.log('✅ Busca de produtos configurada');
+}

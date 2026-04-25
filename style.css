@@ -2703,3 +2703,134 @@ input[type="password"] {
     padding: 0 2px;
     border-radius: 3px;
 }
+
+/* Filtros de movimentações - Desktop (data lado a lado) */
+.filtros-movimentacoes {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    background: var(--light);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.filtros-datas {
+    display: flex;
+    gap: 15px;
+    flex: 2;
+}
+
+.filtros-datas .form-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+.filtros-movimentacoes .form-group {
+    flex: 1;
+    min-width: 180px;
+}
+
+.filtros-movimentacoes button {
+    min-width: 100px;
+}
+
+/* Responsivo para celular - empilhar tudo */
+@media (max-width: 768px) {
+    .filtros-movimentacoes {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .filtros-datas {
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+    
+    .filtros-datas .form-group {
+        width: 100%;
+    }
+    
+    .filtros-movimentacoes .form-group {
+        width: 100%;
+    }
+    
+    .filtros-movimentacoes button {
+        width: 100%;
+    }
+}
+/* ========== ESTILOS DA ABA PRODUTOS ========== */
+
+/* Container da busca - centralizado com 50% de largura */
+.busca-produtos-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 25px;
+}
+
+.busca-produtos {
+    width: 50%;
+    min-width: 250px;
+}
+
+/* Linha dupla para Preço de Custo e Estoque Mínimo */
+.linha-dupla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Responsivo para celular */
+@media (max-width: 768px) {
+    .busca-produtos {
+        width: 100%;
+    }
+    
+    .linha-dupla {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+/* ========== ESTILOS DA ABA PRODUTOS ========== */
+
+/* Formulário de produto - grid normal */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+/* Linha dupla para Preço de Custo e Estoque Mínimo (abaixo dos campos normais) */
+.linha-dupla {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 0;
+}
+
+/* Container da busca - centralizado com 50% de largura */
+.busca-produtos-container {
+    display: flex;
+    justify-content: center;
+    margin: 25px 0;
+}
+
+.busca-produtos {
+    width: 50%;
+    min-width: 250px;
+}
+
+/* Responsivo para celular */
+@media (max-width: 768px) {
+    .linha-dupla {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .busca-produtos {
+        width: 100%;
+    }
+}

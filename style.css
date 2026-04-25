@@ -658,9 +658,7 @@ body.logged-in .app-container {
     width: 150px;  /* AUMENTADO de 80px para 120px */
     height: 150px; /* AUMENTADO de 80px para 120px */
     object-fit: cover;
-    border-radius: 16px; /* AUMENTADO de 12px para 16px */
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    border: 3px solid var(--primary); /* AUMENTADO de 2px para 3px */
+    
 }
 
 .logo-text {

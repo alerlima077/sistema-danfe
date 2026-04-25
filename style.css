@@ -655,12 +655,12 @@ body.logged-in .app-container {
 }
 
 .logo-image {
-    width: 80px;
-    height: 80px;
+    width: 150px;  /* AUMENTADO de 80px para 120px */
+    height: 150px; /* AUMENTADO de 80px para 120px */
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: 16px; /* AUMENTADO de 12px para 16px */
     box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    border: 2px solid var(--primary);
+    border: 3px solid var(--primary); /* AUMENTADO de 2px para 3px */
 }
 
 .logo-text {
@@ -672,12 +672,12 @@ body.logged-in .app-container {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 24px;
+    font-size: 28px; /* AUMENTADO de 24px para 28px */
     color: var(--dark);
 }
 
 .logo-icon {
-    font-size: 32px;
+    font-size: 36px; /* AUMENTADO de 32px para 36px */
 }
 
 .subtitle {
@@ -690,6 +690,28 @@ body.logged-in .app-container {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    justify-content: flex-end; /* ALINHA OS BOTÕES À DIREITA */
+    flex: 1;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .logo-image {
+        width: 80px;  /* No celular, volta um pouco menor */
+        height: 80px;
+    }
+    
+    .logo {
+        font-size: 22px;
+    }
+    
+    .logo-icon {
+        font-size: 28px;
+    }
+    
+    .header-buttons {
+        justify-content: center;
+    }
 }
 
 .btn-boletos {

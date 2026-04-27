@@ -192,6 +192,65 @@ async function salvarProdutoFirebase(produto) {
     }
 }
 
+// ========== FUNÇÃO PARA GERAR CÓDIGO AUTOMÁTICO ==========
+async function gerarProximoCodigo() {
+    if (typeof db === 'undefined') return '001';
+    
+    try {
+        // Buscar todos os produtos ordenados por código decrescente
+        const snapshot = await db.collection('produtos')
+            .orderBy('codigo', 'desc')
+            .limit(1)
+            .get();
+        
+        let ultimoCodigo = 0;
+        
+        if (!snapshot.empty) {
+            const ultimoProduto = snapshot.docs[0].data();
+            const codigoStr = ultimoProduto.codigo;
+            
+            // Extrair número do código (ex: "001" -> 1, "045" -> 45, "0001" -> 1)
+            const numero = parseInt(codigoStr, 10);
+            if (!isNaN(numero)) {
+                ultimoCodigo = numero;
+            }
+        }
+        
+        const proximoCodigo = ultimoCodigo + 1;
+        
+        // Definir formato com 3 dígitos (001, 002, 003...)
+        // Se quiser 4 dígitos, mude para '0000'
+        const formato = '000';
+        const codigoFormatado = proximoCodigo.toString().padStart(formato.length, '0');
+        
+        console.log(`📝 Novo código gerado: ${codigoFormatado} (anterior: ${ultimoCodigo})`);
+        return codigoFormatado;
+        
+    } catch (error) {
+        console.error('Erro ao gerar código:', error);
+        return '001';
+    }
+}
+
+// Função para atualizar o campo de código no formulário
+async function atualizarCampoCodigo() {
+    const campoCodigo = document.getElementById('produtoCodigo');
+    if (campoCodigo) {
+        const novoCodigo = await gerarProximoCodigo();
+        campoCodigo.value = novoCodigo;
+    }
+}
+
+// Chamar a atualização quando a página de estoque for aberta
+function inicializarCodigoAutomatico() {
+    atualizarCampoCodigo();
+}
+
+// Chamar após cadastrar um produto (para gerar o próximo código)
+async function aposCadastrarProduto() {
+    await atualizarCampoCodigo();
+}
+
 // Salvar inventário no Firebase
 async function salvarInventarioFirebase(inventario) {
     if (typeof db !== 'undefined') {
@@ -3334,3 +3393,103 @@ if (document.readyState === 'loading') {
 } else {
     configurarBuscaProdutosPermanente();
 }
+
+// ========== CÓDIGO AUTOMÁTICO PARA PRODUTOS ==========
+
+// Função para gerar próximo código
+async function gerarProximoCodigo() {
+    if (typeof db === 'undefined') return '001';
+    
+    try {
+        // Buscar produtos ordenados por código
+        const snapshot = await db.collection('produtos')
+            .orderBy('codigo', 'desc')
+            .limit(1)
+            .get();
+        
+        let ultimoCodigo = 0;
+        
+        if (!snapshot.empty) {
+            const ultimoProduto = snapshot.docs[0].data();
+            const codigoStr = ultimoProduto.codigo;
+            const numero = parseInt(codigoStr, 10);
+            if (!isNaN(numero)) {
+                ultimoCodigo = numero;
+            }
+        }
+        
+        const proximoCodigo = ultimoCodigo + 1;
+        const codigoFormatado = proximoCodigo.toString().padStart(3, '0');
+        
+        console.log(`📝 Novo código gerado: ${codigoFormatado}`);
+        return codigoFormatado;
+        
+    } catch (error) {
+        console.error('Erro ao gerar código:', error);
+        return '001';
+    }
+}
+
+// Função para atualizar o campo de código
+async function atualizarCampoCodigo() {
+    const campoCodigo = document.getElementById('produtoCodigo');
+    if (campoCodigo) {
+        const novoCodigo = await gerarProximoCodigo();
+        campoCodigo.value = novoCodigo;
+        campoCodigo.readOnly = true;
+        campoCodigo.style.backgroundColor = '#f1f5f9';
+        campoCodigo.style.fontWeight = 'bold';
+        console.log(`✅ Código atualizado: ${novoCodigo}`);
+    }
+}
+
+// Modificar o botão de cadastro para preservar o código
+function configurarCadastroComCodigo() {
+    const btnSalvar = document.getElementById('salvarProdutoBtn');
+    if (!btnSalvar) {
+        console.log('Botão não encontrado');
+        return;
+    }
+    
+    // Adicionar evento para garantir o código antes de salvar
+    btnSalvar.addEventListener('click', async function(e) {
+        const campoCodigo = document.getElementById('produtoCodigo');
+        if (campoCodigo && !campoCodigo.value) {
+            campoCodigo.value = await gerarProximoCodigo();
+        }
+    });
+    
+    console.log('✅ Configuração de código automática ativada');
+}
+
+// Inicializar quando a página de estoque for aberta
+function inicializarCodigoAutomatico() {
+    console.log('🔧 Inicializando código automático...');
+    atualizarCampoCodigo();
+    configurarCadastroComCodigo();
+}
+
+// Chamar quando o DOM carregar
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(inicializarCodigoAutomatico, 1000);
+    });
+} else {
+    setTimeout(inicializarCodigoAutomatico, 1000);
+}
+
+// Executar também quando a página de estoque for aberta
+const observerCodigo = new MutationObserver(function() {
+    const estoquePage = document.getElementById('estoquePage');
+    if (estoquePage && estoquePage.style.display === 'block') {
+        console.log('📦 Estoque aberto, atualizando código...');
+        atualizarCampoCodigo();
+    }
+});
+
+const paginaEstoque = document.getElementById('estoquePage');
+if (paginaEstoque) {
+    observerCodigo.observe(paginaEstoque, { attributes: true });
+}
+
+console.log('🚀 Script de código automático carregado!');

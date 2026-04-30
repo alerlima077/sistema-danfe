@@ -8,6 +8,15 @@ let boletos = {};
 let pagamentos = [];
 let syncInProgress = false;
 
+function formatarQuantidade(valor, casas = 2) {
+    const numero = Number(valor) / 100;
+
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas
+    }).format(numero);
+}
+
 // ========== FUNÇÕES DE FORMATAÇÃO DE VALORES BRASILEIROS ==========
 
 // Converter string brasileira para número
@@ -2464,14 +2473,15 @@ async function atualizarTopConsumo() {
         
         const maxQtd = lista[0]?.quantidade || 1;
         
-        // ⭐ ALTERADO: 2 casas decimais ⭐
         container.innerHTML = lista.map(item => {
             const percent = (item.quantidade / maxQtd) * 100;
             return `
                 <div class="consumo-item">
                     <div class="consumo-header">
                         <span class="consumo-nome">${item.nome}</span>
-                        <span class="consumo-valor">${item.quantidade.toFixed(2)} ${item.unidade}</span>
+                        <span class="consumo-valor">
+                            ${formatarQuantidade(item.quantidade)} ${item.unidade}
+                        </span>
                     </div>
                     <div class="consumo-bar">
                         <div class="consumo-bar-fill" style="width: ${percent}%"></div>
@@ -2771,7 +2781,12 @@ async function atualizarTopConsumo() {
                 <div class="consumo-item">
                     <div class="consumo-header">
                         <span class="consumo-nome">${item.nome}</span>
-                        <span class="consumo-valor">${item.quantidade.toFixed(2)} ${item.unidade}</span>
+                        <span class="consumo-valor">
+                            ${new Intl.NumberFormat('pt-BR', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }).format(Number(item.quantidade))} ${item.unidade}
+                        </span>
                     </div>
                     <div class="consumo-bar">
                         <div class="consumo-bar-fill" style="width: ${percent}%"></div>
@@ -2779,7 +2794,7 @@ async function atualizarTopConsumo() {
                 </div>
             `;
         }).join('');
-        
+                
     } catch (error) {
         console.error('Erro ao carregar top consumo:', error);
         container.innerHTML = '<div class="empty-message">Erro ao carregar dados</div>';

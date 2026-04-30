@@ -2,6 +2,21 @@
 let produtos = [];
 let movimentacoes = [];
 let inventarios = [];
+let estoqueInicializado = false;
+let produtosCarregados = false;
+let dashboardCarregado = false;
+
+// 🔧 Funções utilitárias
+// 🔧 Funções utilitárias (TOPO DO ARQUIVO)
+
+function formatarQuantidade(valor, casas = 2) {
+    const numero = Number(valor) / 100;
+
+    return new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: casas,
+        maximumFractionDigits: casas
+    }).format(numero);
+}
 
 // ========== FUNÇÕES PARA EVITAR DUPLICIDADE ==========
 
@@ -9,40 +24,35 @@ let inventarios = [];
 function normalizarTexto(texto) {
     if (!texto) return '';
     
-    // Converter para maiúsculo
-    let normalizado = texto.toUpperCase().trim();
-    
-    // Remover acentos
-    normalizado = normalizado.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    
-    // Remover pontuações e caracteres especiais (exceto números e letras)
-    normalizado = normalizado.replace(/[^\w\s]/g, '');
-    
-    // Remover espaços extras
-    normalizado = normalizado.replace(/\s+/g, ' ');
-    
-    // Remover palavras comuns que podem causar duplicidade
+    let normalizado = texto
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    // mantém números e letras, remove sujeira
+    normalizado = normalizado.replace(/[^A-Z0-9\s]/g, '');
+
+    // remove unidades (ok para busca)
     const palavrasRemover = ['KG', 'UN', 'CX', 'PCT', 'G', 'L', 'ML', 'PC', 'FD'];
     palavrasRemover.forEach(palavra => {
         normalizado = normalizado.replace(new RegExp(`\\b${palavra}\\b`, 'g'), '');
     });
-    
-    // Remover números no final (ex: "CALABRESA 12KG" -> "CALABRESA")
-    normalizado = normalizado.replace(/\s+\d+$/, '');
-    normalizado = normalizado.replace(/\d+$/, '');
-    
-    return normalizado.trim();
+
+    // remove espaços extras
+    normalizado = normalizado.replace(/\s+/g, ' ').trim();
+
+    return normalizado;
 }
 
 // Buscar produtos similares
 async function buscarProdutosSimilares(nomeProduto, codigoProduto = null) {
     if (typeof produtos === 'undefined' || produtos.length === 0) return [];
     
-    const nomeNormalizado = normalizarTexto(nomeProduto);
+    const nomeNormalizado = normalizarNome(produto.nome);
     const similares = [];
     
     produtos.forEach(produto => {
-        const produtoNormalizado = normalizarTexto(produto.nome);
+        const produtoNormalizado = normalizarNome(produto.nome);
         
         // Verificar se o código já existe
         if (codigoProduto && produto.codigo === codigoProduto) {
@@ -155,6 +165,83 @@ async function carregarProdutos() {
         
     } catch (error) {
         console.error('Erro ao carregar produtos:', error);
+    }
+}
+
+// 🔽 COLE AQUI (antes de usar a função)
+
+function normalizarNome(nome) {
+    return nome
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+
+        // troca vírgula decimal por ponto
+        .replace(/(\d),(\d)/g, "$1.$2")
+
+        // troca "_" por espaço (ESSENCIAL)
+        .replace(/_/g, " ")
+
+        // remove caracteres inválidos
+        .replace(/[^A-Za-z0-9\s./xX-]/g, "")
+
+        // remove ponto que NÃO é decimal
+        .replace(/(\d)\.(?=\D)/g, "$1")
+
+        // normaliza espaços
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+}
+
+async function atualizarNomeNormalizadoProdutos() {
+    if (typeof db === 'undefined') {
+        console.log('❌ Firebase não disponível');
+        return;
+    }
+
+    if (typeof normalizarNome === 'undefined') {
+        console.log('❌ Função normalizarNome não encontrada');
+        return;
+    }
+
+    try {
+        console.log('🔄 Iniciando atualização de nomeNormalizado...');
+
+        const snapshot = await db.collection('produtos').get();
+
+        if (snapshot.empty) {
+            console.log('⚠️ Nenhum produto encontrado');
+            return;
+        }
+
+        let atualizados = 0;
+        const batch = db.batch();
+
+        for (const doc of snapshot.docs) {
+            const produto = doc.data();
+
+            if (!produto.nome) continue;
+
+            const nomeNormalizado = normalizarNome(produto.nome);
+
+            if (produto.nomeNormalizado === nomeNormalizado) continue;
+
+            batch.update(doc.ref, {
+                nomeNormalizado: nomeNormalizado
+            });
+
+            atualizados++;
+            console.log(`✅ Atualizado: ${produto.nome} → ${nomeNormalizado}`);
+        }
+
+        await batch.commit();
+
+        console.log(`🚀 Atualização finalizada! ${atualizados} produtos atualizados.`);
+        alert(`✅ ${atualizados} produtos atualizados com sucesso!`);
+
+    } catch (error) {
+        console.error('❌ Erro na atualização:', error);
+        alert('Erro ao atualizar produtos!');
     }
 }
 
@@ -349,7 +436,6 @@ function atualizarMargemInfo() {
     }
 }
 
-// ========== FUNÇÕES DAS ABAS ==========
 
 // ========== FUNÇÕES DAS ABAS ==========
 
@@ -405,36 +491,52 @@ window.mostrarAba = mostrarAba;
 // Buscar ou criar produto pelo nome
 async function buscarOuCriarProduto(produtoNota) {
     if (typeof db === 'undefined') return null;
-    
+
     try {
-        // Buscar produto pelo nome (case insensitive)
-        const snapshot = await db.collection('produtos')
-            .where('nome', '==', produtoNota.descricao)
-            .limit(1)
-            .get();
-        
-        if (!snapshot.empty) {
-            // Produto existe
-            const doc = snapshot.docs[0];
-            return { id: doc.id, ...doc.data() };
-        } else {
-            // Produto não existe, criar novo
-            const novoProduto = {
-                codigo: `AUTO-${Date.now()}`,
-                nome: produtoNota.descricao,
-                categoria: 'outros',
-                unidade: produtoNota.unidade || 'UN',
-                precoCusto: produtoNota.precoUnitario || 0,
-                precoVenda: 0,
-                margemLucro: 0,
-                estoqueAtual: 0,
-                estoqueMinimo: 0,
-                createdAt: new Date().toISOString()
-            };
-            
-            const docRef = await db.collection('produtos').add(novoProduto);
-            return { id: docRef.id, ...novoProduto };
+        // 🔥 Normalizar nome da nota
+        const nomeNormalizadoNota = normalizarNome(produtoNota.descricao);
+
+        // 🔎 Buscar TODOS os produtos (não dá pra confiar em where aqui)
+        const snapshot = await db.collection('produtos').get();
+
+        let produtoEncontrado = null;
+
+        snapshot.forEach(doc => {
+            const produto = doc.data();
+            const nomeNormalizadoBanco = produto.nomeNormalizado || normalizarNome(produto.nome);
+
+            // ✅ Comparação inteligente
+            if (nomeNormalizadoBanco === nomeNormalizadoNota) {
+                produtoEncontrado = { id: doc.id, ...produto };
+            }
+        });
+
+        if (produtoEncontrado) {
+            console.log('✅ Produto já existe:', produtoEncontrado.nome);
+            return produtoEncontrado;
         }
+
+        // ❌ NÃO EXISTE → CRIAR
+        console.log('🆕 Criando novo produto:', produtoNota.descricao);
+
+        const novoProduto = {
+            codigo: `AUTO-${Date.now()}`,
+            nome: produtoNota.descricao.toUpperCase(),
+            nomeNormalizado: nomeNormalizadoNota,
+            categoria: 'outros',
+            unidade: produtoNota.unidade || 'UN',
+            precoCusto: produtoNota.precoUnitario || 0,
+            precoVenda: 0,
+            margemLucro: 0,
+            estoqueAtual: 0,
+            estoqueMinimo: 0,
+            createdAt: new Date().toISOString()
+        };
+
+        const docRef = await db.collection('produtos').add(novoProduto);
+
+        return { id: docRef.id, ...novoProduto };
+
     } catch (error) {
         console.error('Erro ao buscar/criar produto:', error);
         return null;
@@ -451,7 +553,10 @@ async function atualizarEstoquePorNota(produtoNota, notaId) {
         if (!produto) return;
         
         // Nova quantidade em estoque
-        const novaQuantidade = (produto.estoqueAtual || 0) + produtoNota.quantidade;
+        const quantidadeNota = parseFloat(produtoNota.quantidade) || 0;
+        const estoqueAtual = parseFloat(produto.estoqueAtual) || 0;
+
+        const novaQuantidade = estoqueAtual + quantidadeNota;
         
         // Atualizar produto no Firebase
         await db.collection('produtos').doc(produto.id).update({
@@ -528,7 +633,7 @@ async function carregarMovimentacoes(filtros = {}) {
             const dataInicioLocal = new Date(ano, mes - 1, dia, 0, 0, 0);
             
             movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
-                const dataMov = new Date(mov.dataHora);
+                const dataMov = mov.dataHora?.toDate ? mov.dataHora.toDate() : new Date(mov.dataHora);
                 return dataMov >= dataInicioLocal;
             });
             console.log(`📅 Filtro data início (${filtros.dataInicio}): ${movimentacoesFiltradas.length} movimentações`);
@@ -541,7 +646,7 @@ async function carregarMovimentacoes(filtros = {}) {
             const dataFimLocal = new Date(ano, mes - 1, dia, 23, 59, 59);
             
             movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
-                const dataMov = new Date(mov.dataHora);
+                const dataMov = mov.dataHora?.toDate ? mov.dataHora.toDate() : new Date(mov.dataHora);
                 return dataMov <= dataFimLocal;
             });
             console.log(`📅 Filtro data fim (${filtros.dataFim}): ${movimentacoesFiltradas.length} movimentações`);
@@ -1204,7 +1309,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('✅ Botão salvarProdutoBtn encontrado!');
             
             // Remover event listeners antigos
-            const novoBtn = btnSalvar.cloneNode(true);
+            btnSalvar.replaceWith(btnSalvar.cloneNode(true));
+            const novoBtn = document.getElementById('salvarProdutoBtn');
             btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
             
             novoBtn.addEventListener('click', async function(e) {
@@ -1254,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     precoCusto: precoCusto,
                     estoqueAtual: 0,
                     estoqueMinimo: estoqueMinimo,
-                    nomeNormalizado: normalizarTexto(nome),
+                    nomeNormalizado: normalizarNome(nome),
                     createdAt: new Date().toISOString()
                 };
                 
@@ -1415,7 +1521,8 @@ window.editarProduto = async function(produtoId) {
     const btnSalvar = document.getElementById('btnSalvarEdicao');
     if (btnSalvar) {
         // Remover event listeners antigos
-        const novoBtn = btnSalvar.cloneNode(true);
+        novaContagemBtn.replaceWith(novaContagemBtn.cloneNode(true));
+        const novoBotao = document.getElementById('novaContagemBtn');
         btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
         
         novoBtn.addEventListener('click', async function(e) {
@@ -1599,20 +1706,21 @@ function inicializarFormularioProduto() {
 // Configurar event listeners do inventário
 function configurarInventarioListeners() {
     console.log('Configurando listeners do inventário...');
-    
+
+    // ===== NOVA CONTAGEM =====
     const novaContagemBtn = document.getElementById('novaContagemBtn');
     if (novaContagemBtn) {
-        // Remover event listeners antigos
         const novoBotao = novaContagemBtn.cloneNode(true);
         novaContagemBtn.parentNode.replaceChild(novoBotao, novaContagemBtn);
-        
+
         novoBotao.addEventListener('click', function(e) {
             e.preventDefault();
             console.log('Botão Nova Contagem clicado!');
+
             const formContagem = document.getElementById('formContagem');
             if (formContagem) {
                 formContagem.style.display = 'block';
-                // Limpar formulário ao abrir
+
                 document.getElementById('contagemProduto').value = '';
                 document.getElementById('quantidadeSistema').value = '';
                 document.getElementById('quantidadeContada').value = '';
@@ -1625,34 +1733,37 @@ function configurarInventarioListeners() {
     } else {
         console.error('Botão novaContagemBtn não encontrado!');
     }
-    
+
+    // ===== CANCELAR CONTAGEM =====
     const cancelarContagemBtn = document.getElementById('cancelarContagemBtn');
     if (cancelarContagemBtn) {
         const novoCancelar = cancelarContagemBtn.cloneNode(true);
         cancelarContagemBtn.parentNode.replaceChild(novoCancelar, cancelarContagemBtn);
-        
+
         novoCancelar.addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('Cancelar clicado');
+            e.stopPropagation();
+            console.log('👉 Cancelar contagem clicado');
+
             const formContagem = document.getElementById('formContagem');
-            if (formContagem) {
-                formContagem.style.display = 'none';
-            }
+            if (formContagem) formContagem.style.display = 'none';
         });
     }
-    
+
+    // ===== SALVAR CONTAGEM =====
     const salvarContagemBtn = document.getElementById('salvarContagemBtn');
     if (salvarContagemBtn) {
         const novoSalvar = salvarContagemBtn.cloneNode(true);
         salvarContagemBtn.parentNode.replaceChild(novoSalvar, salvarContagemBtn);
-        
+
         novoSalvar.addEventListener('click', function(e) {
             e.preventDefault();
             console.log('Salvar contagem clicado');
             salvarContagem();
         });
     }
-    
+
+    // ===== SELECT PRODUTO =====
     const contagemProduto = document.getElementById('contagemProduto');
     if (contagemProduto) {
         contagemProduto.addEventListener('change', function() {
@@ -1660,7 +1771,8 @@ function configurarInventarioListeners() {
             carregarQuantidadeSistema();
         });
     }
-    
+
+    // ===== INPUT QUANTIDADE =====
     const quantidadeContada = document.getElementById('quantidadeContada');
     if (quantidadeContada) {
         quantidadeContada.addEventListener('input', function() {
@@ -1668,7 +1780,7 @@ function configurarInventarioListeners() {
             calcularDiferenca();
         });
     }
-    
+
     console.log('Listeners do inventário configurados!');
 }
 
@@ -2294,7 +2406,8 @@ function configurarConsumoListeners() {
     const filtrarBtn = document.getElementById('filtrarConsumoBtn');
     if (filtrarBtn) {
         // Remover listeners antigos
-        const novoBtn = filtrarBtn.cloneNode(true);
+        filtrarConsumoBtn.replaceWith(filtrarConsumoBtn.cloneNode(true));
+        const novoBtn = document.getElementById('filtrarConsumoBtn');
         filtrarBtn.parentNode.replaceChild(novoBtn, filtrarBtn);
         
         novoBtn.addEventListener('click', function(e) {
@@ -2401,7 +2514,10 @@ function popularSelectProdutosConsumo() {
 async function exibirConsumo() {
     console.log('🔍 Filtrando consumo...');
     
-    const produtoId = document.getElementById('produtoConsumo').value;
+    const produtoSelect = document.getElementById('produtoConsumo');
+    if (!produtoSelect) return;
+
+    const produtoId = produtoSelect.value;
     const periodo = document.getElementById('periodoConsumo').value;
     
     console.log('Período selecionado:', periodo);
@@ -2457,7 +2573,7 @@ async function exibirConsumo() {
     
     // Filtrar por período
     movimentacoesFiltradas = movimentacoesFiltradas.filter(mov => {
-        const dataMov = new Date(mov.dataHora);
+        const dataMov = mov.dataHora?.toDate ? mov.dataHora.toDate() : new Date(mov.dataHora);
         return dataMov >= dataInicio && dataMov <= dataFim;
     });
     
@@ -2472,11 +2588,14 @@ async function exibirConsumo() {
     const quantidadeTotal = movimentacoesFiltradas.reduce((sum, m) => sum + (m.quantidade || 0), 0);
     
     // Calcular média diária em quantidade
-    const dias = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24)) || 1;
+    const diffTime = dataFim.getTime() - dataInicio.getTime();
+    const dias = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
     const mediaDiaria = quantidadeTotal / dias;
     
     // Obter unidade do produto
-    let unidade = 'unidades';
+    if (produtoId === 'todos') {
+        unidade = '';
+    }
     let estoqueAtual = 0;
     
     if (produtoId !== 'todos' && typeof produtos !== 'undefined' && produtos.length > 0) {
@@ -2570,18 +2689,25 @@ function configurarConsumoListeners() {
 }
 
 // Atualizar função inicializarEstoque para incluir consumo
-function inicializarEstoqueCompleto() {
-    // Chamar funções existentes
+async function inicializarEstoqueCompleto() {
+    if (estoqueInicializado) {
+        console.log('⚠️ Estoque já inicializado, evitando recarga...');
+        return;
+    }
+
+    console.log('🚀 Inicializando estoque pela primeira vez...');
+
     if (typeof inicializarFormularioProduto === 'function') inicializarFormularioProduto();
-    if (typeof carregarProdutos === 'function') carregarProdutos();
+    if (typeof carregarProdutos === 'function') await carregarProdutos();
     if (typeof carregarMovimentacoes === 'function') carregarMovimentacoes();
     if (typeof carregarInventarios === 'function') carregarInventarios();
-    
-    // Novas funções
-    carregarConsumo();
+    if (typeof carregarConsumo === 'function') carregarConsumo();
+
     if (typeof configurarMovimentacoesListeners === 'function') configurarMovimentacoesListeners();
     if (typeof configurarInventarioListeners === 'function') configurarInventarioListeners();
     configurarConsumoListeners();
+
+    estoqueInicializado = true;
 }
 
 // Substituir a função inicializarEstoque pela nova (se existir)
@@ -2594,48 +2720,25 @@ if (typeof window.inicializarEstoque !== 'undefined') {
 console.log('✅ Funções da tela de consumo carregadas!');
 
 // ========== CONFIGURAÇÃO FORÇADA DO BOTÃO CONSUMO ==========
-// Aguardar o DOM carregar completamente
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Configurando botão de consumo...');
-    
+
     const filtrarConsumoBtn = document.getElementById('filtrarConsumoBtn');
+
     if (filtrarConsumoBtn) {
-        // Remover event listeners antigos
         const novoBtn = filtrarConsumoBtn.cloneNode(true);
         filtrarConsumoBtn.parentNode.replaceChild(novoBtn, filtrarConsumoBtn);
-        
-        // Adicionar novo event listener
+
         novoBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             console.log('👉 Botão Filtrar Consumo CLICADO!');
-            if (typeof exibirConsumo === 'function') {
-                exibirConsumo();
-            } else {
-                console.error('Função exibirConsumo não encontrada');
-            }
+            exibirConsumo();
         });
-        console.log('✅ Botão Filtrar Consumo configurado permanentemente!');
+
+        console.log('✅ Botão Filtrar Consumo configurado!');
     } else {
         console.log('❌ Botão filtrarConsumoBtn não encontrado');
-    }
-    
-    // Configurar também o toggle de datas
-    const periodoSelect = document.getElementById('periodoConsumo');
-    if (periodoSelect) {
-        periodoSelect.addEventListener('change', function() {
-            console.log('Período alterado para:', this.value);
-            const dataInicioGroup = document.getElementById('dataInicioGroup');
-            const dataFimGroup = document.getElementById('dataFimGroup');
-            if (this.value === 'personalizado') {
-                if (dataInicioGroup) dataInicioGroup.style.display = 'block';
-                if (dataFimGroup) dataFimGroup.style.display = 'block';
-            } else {
-                if (dataInicioGroup) dataInicioGroup.style.display = 'none';
-                if (dataFimGroup) dataFimGroup.style.display = 'none';
-            }
-        });
-        console.log('✅ Listener do período configurado');
     }
 });
 
@@ -2819,7 +2922,12 @@ async function gerarRelatorioConsumo() {
     listaConsumo = listaConsumo.map(item => {
         let unidade = 'UN';
         if (typeof produtos !== 'undefined') {
-            const produto = produtos.find(p => p.id === item.id);
+            consumoPorProduto[produtoId] = {
+                id: produtoId, // 🔥 FALTAVA ISSO
+                nome: saida.produtoNome || produtoId,
+                quantidade: 0,
+                vezesConsumido: 0
+            };
             if (produto) unidade = produto.unidade || 'UN';
         }
         return { ...item, unidade };
@@ -2935,7 +3043,7 @@ function calcularPeriodoRelatorio(periodo) {
 }
 
 // Exportar relatório para Excel - VERSÃO MELHORADA
-function exportarRelatorio() {
+async function exportarRelatorio() {
     const tipo = document.getElementById('tipoRelatorio').value;
     const periodo = document.getElementById('periodoRelatorio')?.value || 'esteMes';
     
@@ -2947,7 +3055,7 @@ function exportarRelatorio() {
         dadosExcel = gerarDadosExcelEstoque();
     } else {
         nomeArquivo = `relatorio_consumo_${new Date().toISOString().split('T')[0]}`;
-        dadosExcel = gerarDadosExcelConsumo(periodo);
+        dadosExcel = await gerarDadosExcelConsumo(periodo);
     }
     
     if (dadosExcel.length === 0) {
@@ -3082,7 +3190,12 @@ async function gerarDadosExcelConsumo(periodo) {
             listaConsumo = listaConsumo.map(item => {
                 let unidade = 'UN';
                 if (typeof produtos !== 'undefined') {
-                    const produto = produtos.find(p => p.id === item.id);
+                    consumoPorProduto[produtoId] = {
+                        id: produtoId, // 🔥 FALTAVA ISSO
+                        nome: saida.produtoNome || produtoId,
+                        quantidade: 0,
+                        vezesConsumido: 0
+                    };
                     if (produto) unidade = produto.unidade || 'UN';
                 }
                 return { ...item, unidade };
@@ -3096,10 +3209,16 @@ async function gerarDadosExcelConsumo(periodo) {
                 dados.push([
                     `${index + 1}º`,
                     item.nome,
-                    item.quantidade.toFixed(3),
+                    new Intl.NumberFormat('pt-BR', {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    }).format(Number(item.quantidade)),
                     item.unidade,
                     item.vezesConsumido,
-                    (item.quantidade / item.vezesConsumido).toFixed(3)
+                    new Intl.NumberFormat('pt-BR', {
+                        minimumFractionDigits: 3,
+                        maximumFractionDigits: 3
+                    }).format(Number(item.quantidade / item.vezesConsumido))
                 ]);
             });
             
@@ -3124,14 +3243,16 @@ async function gerarDadosExcelConsumo(periodo) {
 function configurarRelatorioListeners() {
     const gerarBtn = document.getElementById('gerarRelatorioBtn');
     if (gerarBtn) {
-        const novoBtn = gerarBtn.cloneNode(true);
+        exportarBtn.replaceWith(exportarBtn.cloneNode(true));
+        const novoExportar = document.getElementById('exportarRelatorioBtn');
         gerarBtn.parentNode.replaceChild(novoBtn, gerarBtn);
         novoBtn.addEventListener('click', gerarRelatorio);
     }
     
     const exportarBtn = document.getElementById('exportarRelatorioBtn');
     if (exportarBtn) {
-        const novoExportar = exportarBtn.cloneNode(true);
+        gerarBtn.replaceWith(gerarBtn.cloneNode(true));
+        const novoGerar = document.getElementById('gerarRelatorioBtn');
         exportarBtn.parentNode.replaceChild(novoExportar, exportarBtn);
         novoExportar.addEventListener('click', exportarRelatorio);
     }
@@ -3140,45 +3261,53 @@ function configurarRelatorioListeners() {
 // ========== CONFIGURAÇÃO FORÇADA DOS BOTÕES DE RELATÓRIO ==========
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔧 Configurando botões de relatório...');
-    
-    // Botão Gerar Relatório
+
+    // ===== GERAR RELATÓRIO =====
     const gerarBtn = document.getElementById('gerarRelatorioBtn');
-    if (gerarBtn) {
+
+    if (gerarBtn && gerarBtn.parentNode) {
         const novoGerar = gerarBtn.cloneNode(true);
         gerarBtn.parentNode.replaceChild(novoGerar, gerarBtn);
+
         novoGerar.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('👉 Botão Gerar Relatório CLICADO!');
+            console.log('👉 Gerar relatório clicado');
+
             if (typeof gerarRelatorio === 'function') {
                 gerarRelatorio();
             } else {
                 console.error('Função gerarRelatorio não encontrada');
             }
         });
-        console.log('✅ Botão Gerar Relatório configurado');
+
+        console.log('✅ Botão gerar relatório OK');
     } else {
-        console.log('❌ Botão gerarRelatorioBtn não encontrado');
+        console.warn('⚠️ gerarRelatorioBtn não existe no DOM ainda');
     }
-    
-    // Botão Exportar Relatório
+
+    // ===== EXPORTAR RELATÓRIO =====
     const exportarBtn = document.getElementById('exportarRelatorioBtn');
-    if (exportarBtn) {
+
+    if (exportarBtn && exportarBtn.parentNode) {
         const novoExportar = exportarBtn.cloneNode(true);
         exportarBtn.parentNode.replaceChild(novoExportar, exportarBtn);
+
         novoExportar.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('👉 Botão Exportar Relatório CLICADO!');
+            console.log('👉 Exportar relatório clicado');
+
             if (typeof exportarRelatorio === 'function') {
                 exportarRelatorio();
             } else {
                 console.error('Função exportarRelatorio não encontrada');
             }
         });
-        console.log('✅ Botão Exportar Relatório configurado');
+
+        console.log('✅ Botão exportar OK');
     } else {
-        console.log('❌ Botão exportarRelatorioBtn não encontrado');
+        console.warn('⚠️ exportarRelatorioBtn não existe no DOM ainda');
     }
 });
 
@@ -3446,20 +3575,25 @@ async function atualizarCampoCodigo() {
 // Modificar o botão de cadastro para preservar o código
 function configurarCadastroComCodigo() {
     const btnSalvar = document.getElementById('salvarProdutoBtn');
-    if (!btnSalvar) {
-        console.log('Botão não encontrado');
-        return;
+
+    if (btnSalvar && btnSalvar.parentNode) {
+        const novoBtn = btnSalvar.cloneNode(true);
+        btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
+
+        novoBtn.addEventListener('click', async function(e) {
+            console.log('👉 Botão salvar produto clicado');
+
+            const campoCodigo = document.getElementById('produtoCodigo');
+
+            if (campoCodigo && !campoCodigo.value) {
+                campoCodigo.value = await gerarProximoCodigo();
+            }
+        });
+
+        console.log('✅ Botão salvar configurado corretamente');
+    } else {
+        console.warn('⚠️ salvarProdutoBtn não encontrado no DOM');
     }
-    
-    // Adicionar evento para garantir o código antes de salvar
-    btnSalvar.addEventListener('click', async function(e) {
-        const campoCodigo = document.getElementById('produtoCodigo');
-        if (campoCodigo && !campoCodigo.value) {
-            campoCodigo.value = await gerarProximoCodigo();
-        }
-    });
-    
-    console.log('✅ Configuração de código automática ativada');
 }
 
 // Inicializar quando a página de estoque for aberta
